@@ -30,7 +30,7 @@ from flowback.users.serializer import SimpleUserSerializer, PollCommentUserSeria
 class GroupPollCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Poll
-        fields = ('group', 'title', 'description', 'end_time')
+        fields = ('group', 'title', 'description', 'type', 'end_time')
 
 
 class GroupPollUpdateSerializer(serializers.ModelSerializer):

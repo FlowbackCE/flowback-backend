@@ -78,6 +78,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                                                            group=serializer.validated_data.get('group'),
                                                            title=serializer.validated_data.get('title'),
                                                            description=serializer.validated_data.get('description'),
+                                                           type=serializer.validated_data.get('type'),
                                                            start_time=datetime.datetime.now(),
                                                            end_time=serializer.validated_data.get('end_time'),
                                                            )
@@ -278,32 +279,89 @@ class GroupPollViewSet(viewsets.ViewSet):
         result = failed_response(data=None, message="Group does not exist.")
         return BadRequest(result)
 
-    @decorators.action(detail=False, methods=['post'], url_path="home_all_poll_list", permission_classes=[AllowAny])
-    def get_all_poll_list(self, request, *args, **kwargs):
+    @decorators.action(detail=False, methods=['post'], url_path="get_poll_list")
+    def get_poll_list(self, request, *args, **kwargs):
         user = request.user
         data = request.data
         response = dict()
         first_page = data.get('first_page')
         last_poll_created_at = data.get('last_poll_created_at', None)
-        if user.id is None:
-            if first_page:
-                # get all poll of public group or user is participate of that group
-                polls = Poll.objects.filter(group__public=True).order_by('-created_at')
-                last_poll_created_at = polls.first().created_at if polls else None
-                response['last_poll_created_at'] = last_poll_created_at
-            else:
-                polls = Poll.objects.filter(created_at__lte=last_poll_created_at).order_by('-created_at') if last_poll_created_at else []
-        else:
-            if first_page:
-                # get all poll of public group or user is participate of that group
-                polls = Poll.objects.filter(Q(group__public=True) | Q(Q(group__owners__in=[user]) | Q(group__admins__in=[user])
-                                            | Q(group__moderators__in=[user]) | Q(group__members__in=[user]) |
-                                              Q(group__delegators__in=[user]), group__public=False)).order_by('-created_at')
-                last_poll_created_at = polls.first().created_at if polls else None
-                response['last_poll_created_at'] = last_poll_created_at
-            else:
-                polls = Poll.objects.filter(created_at__lte=last_poll_created_at).order_by('-created_at') if last_poll_created_at else []
 
+        # get group by id and if does not exist then return error response
+        group = Group.objects.filter(id=data.get('group_id')).first()
+        if group:
+            # get all the group where logged in user is a participant on that group
+            part_of_group = Group.objects.filter(Q(owners__in=[user]) | Q(admins__in=[user]) | Q(moderators__in=[user]) |
+                                                 Q(members__in=[user]) | Q(delegators__in=[user]),
+                                                 id=data.get('group_id'))
+            if part_of_group:
+                if first_page:
+                    # get all polls of particular group
+                    polls = Poll.objects.filter(group=group).order_by('-created_at')
+                    last_poll_created_at = polls.first().created_at if polls else None
+                    response['last_poll_created_at'] = last_poll_created_at
+                else:
+                    polls = Poll.objects.filter(group=group, created_at__lte=last_poll_created_at)\
+                        .order_by('-created_at') if last_poll_created_at else []
+
+                page_number = data.get('page', 1)  # page number
+                page_size = data.get('page_size', 10)  # size per page
+                paginator = Paginator(polls, page_size)
+
+                response['count'] = paginator.count
+                response['total_page'] = len(paginator.page_range)
+                response['next'] = paginator.page(page_number).has_next()
+                response['previous'] = paginator.page(page_number).has_previous()
+
+                # create serializer for get data page by page
+                serializer = GetGroupPollsListSerializer(paginator.page(page_number), many=True, context={'request': self.request})
+                response['data'] = serializer.data
+
+                result = success_response(data=response, message="")
+                return Created(result)
+            result = failed_response(data=None, message="You are not a part of this group.")
+            return BadRequest(result)
+        result = failed_response(data=None, message="Group does not exist.")
+        return BadRequest(result)
+
+    @decorators.action(detail=False, methods=['post'], url_path="home_all_poll_list", permission_classes=[AllowAny])
+    def get_all_poll_list(self, request, *args, **kwargs):
+        user = request.user
+        data = request.data
+        response = dict()
+        poll_type = data.get('poll_type', 'MS')
+        poll_created_before = data.get('poll_created_before', None)
+
+        def user_in_group_query(include_public, **additional_args):
+            allow_public = {}
+            if include_public:
+                allow_public = dict(group__public=include_public)
+
+            return Q(**allow_public) | Q(
+                Q(group__owners__in=[user]) | Q(group__admins__in=[user])
+                | Q(group__moderators__in=[user]) | Q(group__members__in=[user])
+                | Q(group__delegators__in=[user]), group__public=False, **additional_args)
+
+        arguments = dict()
+        if poll_created_before:
+            arguments['created_at__lte'] = poll_created_before
+
+        # Fetch Polls
+        if user.id is None:
+            arguments['group__public'] = True
+            polls = Poll.objects.filter(**arguments).order_by('-created_at')
+
+        else:
+            extra_args = {}  # Custom Arguments
+            if poll_type in Poll.Type.MISSION:
+                extra_args = dict(type=Poll.Type.MISSION, success=True)
+
+            polls = Poll.objects.filter(
+                user_in_group_query(poll_type not in ['MS'], **extra_args),
+                **arguments
+            ).order_by('-created_at').distinct()
+
+        # Paginate
         page_number = data.get('page', 1)  # page number
         page_size = data.get('page_size', 10)  # size of data per page
         paginator = Paginator(polls, page_size)
@@ -313,7 +371,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         response['next'] = paginator.page(page_number).has_next()
         response['previous'] = paginator.page(page_number).has_previous()
 
-        # create serializer for get poll details page by page
+        # Serialize
         serializer = GetGroupPollsListSerializer(paginator.page(page_number), many=True,
                                                  context={"request": self.request})
         response['data'] = serializer.data
@@ -621,6 +679,8 @@ class GroupPollViewSet(viewsets.ViewSet):
 
     def __poll_votes_check(self, poll: Poll):
         Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now() + datetime.timedelta(hours=1))
+
+        # Counting Proposal Votes
         if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
             counter_proposals = PollCounterProposal.objects.filter(poll=poll).all()
             counter = {key.id: 0 for key in counter_proposals}
@@ -651,6 +711,13 @@ class GroupPollViewSet(viewsets.ViewSet):
                         else:
                             counter_proposals[index].final_score += (c_index.priority - len(counter_proposals)) \
                                                                      * multiplier
+
+            # Poll Type Checks
+            if poll.type == Poll.Type.MISSION:
+                top = counter_proposals.order_by('-final_score').first()
+                if top.type != PollCounterProposal.Type.DROP:
+                    poll.success = True
+                    Poll.objects.update(poll, ['success'])
 
             PollCounterProposal.objects.bulk_update(counter_proposals, ['final_score'])
             Poll.objects.filter(id=poll.id).update(votes_counted=True)
@@ -697,7 +764,6 @@ class GroupPollViewSet(viewsets.ViewSet):
                     response_data['proposal_indexes'][str(c_id)] = val + 1
                 for val, c_id in enumerate(negative_proposal_index):
                     response_data['proposal_indexes'][str(c_id)] = -1 - val
-
 
             result = success_response(data=response_data, message="Counter proposal get successfully.")
             return Ok(result)
