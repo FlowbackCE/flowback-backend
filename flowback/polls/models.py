@@ -83,9 +83,9 @@ class Poll(TimeStampedUUIDModel):
     tag = TaggableManager()
 
     class Type(models.TextChoices):
-        POLL = 'PO', _('Poll')
-        MISSION = 'MS', _('Mission')
-        EVENT = 'EV', _('Event')
+        POLL = 'PO', _('poll')
+        MISSION = 'MS', _('mission')
+        EVENT = 'EV',  _('event')
 
     type = models.CharField(
         max_length=2,

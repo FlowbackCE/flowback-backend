@@ -66,6 +66,7 @@ class GroupPollViewSet(viewsets.ViewSet):
             # serializer for create poll
             serializer = GroupPollCreateSerializer(data=json.loads(poll_data))
             if serializer.is_valid(raise_exception=False):
+                serialized_data = serializer.validated_data
                 # get group object by id
                 group = Group.objects.filter(id=serializer.data.get('group')).first()
                 if group.poll_approval == 'direct_approve':
@@ -75,12 +76,12 @@ class GroupPollViewSet(viewsets.ViewSet):
                 # create or get the poll object
                 poll, created = Poll.objects.get_or_create(created_by=request.user,
                                                            modified_by=request.user,
-                                                           group=serializer.validated_data.get('group'),
-                                                           title=serializer.validated_data.get('title'),
-                                                           description=serializer.validated_data.get('description'),
-                                                           type=serializer.validated_data.get('type'),
+                                                           group=serialized_data.get('group'),
+                                                           title=serialized_data.get('title'),
+                                                           description=serialized_data.get('description'),
+                                                           type=serialized_data.get('type'),
                                                            start_time=datetime.datetime.now(),
-                                                           end_time=serializer.validated_data.get('end_time'),
+                                                           end_time=serialized_data.get('end_time'),
                                                            )
                 if accepted:
                     poll.accepted = True
@@ -678,7 +679,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         return BadRequest(result)
 
     def __poll_votes_check(self, poll: Poll):
-        Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now() + datetime.timedelta(hours=1))
+        Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now())
 
         # Counting Proposal Votes
         if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
@@ -712,14 +713,14 @@ class GroupPollViewSet(viewsets.ViewSet):
                             counter_proposals[index].final_score += (c_index.priority - len(counter_proposals)) \
                                                                      * multiplier
 
+            PollCounterProposal.objects.bulk_update(counter_proposals, ['final_score'])
+
             # Poll Type Checks
             if poll.type == Poll.Type.MISSION:
                 top = counter_proposals.order_by('-final_score').first()
-                if top.type != PollCounterProposal.Type.DROP:
-                    poll.success = True
-                    Poll.objects.update(poll, ['success'])
+                if top and top.type != PollCounterProposal.Type.DROP and top.final_score > 0:
+                    Poll.objects.filter(id=poll.id).update(success=True)
 
-            PollCounterProposal.objects.bulk_update(counter_proposals, ['final_score'])
             Poll.objects.filter(id=poll.id).update(votes_counted=True)
         #
         # elif poll.votes_counted:
