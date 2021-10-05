@@ -330,18 +330,18 @@ class GroupPollViewSet(viewsets.ViewSet):
         user = request.user
         data = request.data
         response = dict()
-        poll_type = data.get('poll_type', 'MS')
+        poll_type = data.get('poll_type', 'all')
         poll_created_before = data.get('poll_created_before', None)
 
-        def user_in_group_query(include_public, **additional_args):
-            allow_public = {}
+        def base_query(include_public: bool):
             if include_public:
-                allow_public = dict(group__public=include_public)
-
-            return Q(**allow_public) | Q(
-                Q(group__owners__in=[user]) | Q(group__admins__in=[user])
-                | Q(group__moderators__in=[user]) | Q(group__members__in=[user])
-                | Q(group__delegators__in=[user]), group__public=False, **additional_args)
+                return Q(group__public=True) | \
+                         Q(Q(group__owners__in=[user]) | Q(group__admins__in=[user])
+                           | Q(group__moderators__in=[user]) | Q(group__members__in=[user])
+                           | Q(group__delegators__in=[user]), Q(group__public=False))
+            return Q(Q(group__owners__in=[user]) | Q(group__admins__in=[user])
+                     | Q(group__moderators__in=[user]) | Q(group__members__in=[user])
+                     | Q(group__delegators__in=[user]), Q(group__public=False))
 
         arguments = dict()
         if poll_created_before:
@@ -354,12 +354,17 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         else:
             extra_args = {}  # Custom Arguments
-            if poll_type in Poll.Type.MISSION:
+            include_public = True
+            if poll_type in Poll.Type.POLL.label:
+                extra_args = dict(type=Poll.Type.POLL)
+            if poll_type in Poll.Type.MISSION.label:
                 extra_args = dict(type=Poll.Type.MISSION, success=True)
+                include_public = False
 
             polls = Poll.objects.filter(
-                user_in_group_query(poll_type not in ['MS'], **extra_args),
-                **arguments
+                    base_query(include_public),
+                    **extra_args,
+                    **arguments
             ).order_by('-created_at').distinct()
 
         # Paginate
@@ -679,7 +684,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         return BadRequest(result)
 
     def __poll_votes_check(self, poll: Poll):
-        Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now())
+        # Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now())
 
         # Counting Proposal Votes
         if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
