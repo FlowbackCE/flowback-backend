@@ -102,6 +102,13 @@ class GroupPollViewSet(viewsets.ViewSet):
 
                 poll.save()
 
+                if poll.type == Poll.Type.MISSION:
+                    PollCounterProposal.objects.create(
+                        poll=poll,
+                        type=PollCounterProposal.Type.DROP,
+                        proposal="Drop this mission"
+                    )
+
                 # return success response with poll id
                 result = success_response(data={"poll": poll.id}, message="")
                 return Created(result)
@@ -685,54 +692,51 @@ class GroupPollViewSet(viewsets.ViewSet):
 
     def __poll_votes_check(self, poll: Poll):
         # Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now())
+        # Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now() + datetime.timedelta(hours=1))
 
         # Counting Proposal Votes
         if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
             counter_proposals = PollCounterProposal.objects.filter(poll=poll).all()
+            indexes = PollCounterProposalsIndex.objects.filter(counter_proposal__poll=poll)
             counter = {key.id: 0 for key in counter_proposals}
-            for index, proposal in enumerate(counter_proposals):
-                # Give final_score a value
-                counter_proposals[index].final_score = 0
 
-                group = proposal.poll.group
-                c_indexes = PollCounterProposalsIndex.objects.filter(
-                    counter_proposal=proposal).all()
-                c_indexes = [list(g) for k, g in groupby(c_indexes, lambda x: x.user.id)]
-                for user_c_indexes in c_indexes:
-                    multiplier = 1
+            # Reset all counter proposals final score
+            for key in range(len(counter_proposals)):
+                counter_proposals[key].final_score = 0
 
-                    # Check if user is delegate
-                    user = user_c_indexes[0].user
-                    if user in group.delegators.all():
-                        multiplier = len(PollUserDelegate.objects.filter(delegator=user, group=group).all())
+            user_indexes = [list(g) for k, g in groupby(indexes, lambda x: x.user.id)]
+            for user_index in user_indexes:
+                # Check if user is delegate
+                group = poll.group
+                user = user_index[0].user
+                multiplier = 1
+                if user in group.delegators.all():
+                    multiplier = len(PollUserDelegate.objects.filter(delegator=user, group=group).all())
 
-                    # TODO priority is a constant, deleting a counter proposal doesn't change it's score,
-                    # A solution would probably be to sort the proposals in priority order,
-                    # and then to add a counter
-                    for sub, c_index in enumerate(user_c_indexes):
-                        if c_index.is_positive:
-                            counter_proposals[index].final_score += (len(counter_proposals) - c_index.priority) \
-                                                                     * multiplier
+                # Separate positive and negative indexes, order by priority ascending
+                positive = sorted([x for x in user_index if x.is_positive], key=lambda x: x.priority)
+                negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
 
-                        else:
-                            counter_proposals[index].final_score += (c_index.priority - len(counter_proposals)) \
-                                                                     * multiplier
+                for sub, index in enumerate(positive):
+                    counter[index.counter_proposal_id] += (len(counter_proposals) - sub) * multiplier
 
+                for sub, index in enumerate(negative):
+                    counter[index.counter_proposal_id] += (sub - len(counter_proposals)) * multiplier
+
+            # Insert counter to proposals
+            for key, counter_proposal in enumerate(counter_proposals):
+                counter_proposals[key].final_score = counter[counter_proposal.id]
+
+            # Apply
             PollCounterProposal.objects.bulk_update(counter_proposals, ['final_score'])
 
             # Poll Type Checks
             if poll.type == Poll.Type.MISSION:
                 top = counter_proposals.order_by('-final_score').first()
-                if top and top.type != PollCounterProposal.Type.DROP and top.final_score > 0:
-                    Poll.objects.filter(id=poll.id).update(success=True)
+                success = top and top.type != PollCounterProposal.Type.DROP and top.final_score
+                Poll.objects.filter(id=poll.id).update(success=success)
 
             Poll.objects.filter(id=poll.id).update(votes_counted=True)
-        #
-        # elif poll.votes_counted:
-        #     raise Exception("Counter proposals has already been counted.")
-        #
-        # else:
-        #     raise Exception("Poll has not been finished yet.")
 
     @decorators.action(detail=False, methods=['post'], url_path="get_all_counter_proposal")
     def get_all_counter_proposal(self, request, *args, **kwargs):
