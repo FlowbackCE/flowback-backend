@@ -45,9 +45,22 @@ from flowback.users.models import User, Group, OnboardUser, GroupRequest, GroupD
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
+    accepted_terms_use = serializers.BooleanField()
+    accepted_terms_condition = serializers.BooleanField()
+
     class Meta:
         model = User
         fields = ('email', 'password', 'accepted_terms_use', 'accepted_terms_condition')
+
+    def validate_accepted_terms_use(self, value):
+        if value:
+            return True
+        raise serializers.ValidationError('accepted_terms_use is not True')
+
+    def validate_accepted_terms_condition(self, value):
+        if value:
+            return True
+        raise serializers.ValidationError('accepted_terms_condition is not True')
 
     def create(self, validated_data):
         password = validated_data.pop('password')

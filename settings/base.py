@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'rest_framework',  # http://www.django-rest-framework.org/
     'rest_framework.authtoken',
     'django_rest_passwordreset',
+    'django_extensions',
     'django_inlinecss',
     'drf_yasg',
     'taggit',

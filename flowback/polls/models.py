@@ -93,6 +93,8 @@ class Poll(TimeStampedUUIDModel):
         default=Type.POLL
     )
 
+    top_proposal = models.ForeignKey('polls.PollProposal', related_name="poll_top_proposal",
+                                     on_delete=models.DO_NOTHING, null=True, blank=True)
     success = models.BooleanField(default=False)
     files = models.ManyToManyField(PollDocs, related_name='poll_documents')
     accepted = models.BooleanField(default=True)
@@ -141,7 +143,7 @@ class PollBookmark(TimeStampedUUIDModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
-class PollCounterProposal(TimeStampedUUIDModel):
+class PollProposal(TimeStampedUUIDModel):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
@@ -163,19 +165,51 @@ class PollCounterProposal(TimeStampedUUIDModel):
         unique_together = ('poll', 'user')
 
 
-class PollCounterProposalsIndex(TimeStampedUUIDModel):
-    counter_proposal = models.ForeignKey(PollCounterProposal, on_delete=models.CASCADE)
+class PollProposalEvent(TimeStampedUUIDModel):
+    poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+
+    class Type(models.TextChoices):
+        DEFAULT = 'DEFAULT', _('Default')
+        DROP = 'DROP', _('Drop')
+
+    type = models.CharField(
+        max_length=30,
+        choices=Type.choices,
+        default=Type.DEFAULT
+    )
+
+    proposal = models.TextField(null=True, blank=True)
+    date = models.DateTimeField()
+    final_score = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        unique_together = (('poll', 'user'), ('poll', 'date'))
+
+
+class PollProposalIndex(TimeStampedUUIDModel):
+    proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    priority = models.IntegerField()
+    is_positive = models.BooleanField()  # Whether the user votes for or against the proposal
+
+    class Meta:
+        unique_together = ('proposal', 'user')
+
+
+class PollProposalEventIndex(TimeStampedUUIDModel):
+    proposal = models.ForeignKey(PollProposalEvent, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     priority = models.IntegerField()
     is_positive = models.BooleanField()  # Whether the user votes for or against the counter-proposal
 
     class Meta:
-        unique_together = ('counter_proposal', 'user', 'priority', 'is_positive')
+        unique_together = ('proposal', 'user', 'priority', 'is_positive')
 
 
 class PollCounterProposalComments(TimeStampedUUIDModel):
     comment = models.TextField(_('Counter Proposal Comments'))
-    counter_proposal = models.ForeignKey(PollCounterProposal, on_delete=models.CASCADE)
+    counter_proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
     reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     edited = models.BooleanField(default=False)
     likes = models.ManyToManyField(User, related_name='counter_proposal_likes_by')

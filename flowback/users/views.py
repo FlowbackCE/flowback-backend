@@ -228,6 +228,7 @@ class UserLogin(ObtainAuthToken):
         # serializer for token auth
         serializer = self.serializer_class(data=request.data,
                                            context={'request': request})
+
         if serializer.is_valid(raise_exception=False):
             user = serializer.validated_data['user']
             # create or get token for user

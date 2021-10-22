@@ -23,6 +23,8 @@ import json
 import copy
 
 from random import randint
+
+import rest_framework.exceptions
 from django.core.mail import send_mail
 from django.db.models import Q
 from rest_framework import decorators, viewsets, status
@@ -34,6 +36,7 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import *
 from django.core.paginator import Paginator
 from django.db.models import Count
+from django.shortcuts import get_object_or_404, get_list_or_404
 
 from flowback.response import Created, BadRequest, NotFound
 from flowback.response import Ok
@@ -41,18 +44,20 @@ from flowback.response_handler import success_response, failed_response
 from flowback.users.models import Group, OnboardUser
 from flowback.users.models import User
 from flowback.polls.models import Poll, PollDocs, PollVotes, PollComments, PollBookmark,\
-    PollCounterProposal, PollCounterProposalComments, PollCounterProposalsIndex, PollUserDelegate
+    PollProposal, PollProposalEvent, PollCounterProposalComments, PollProposalIndex,\
+    PollProposalEventIndex, PollUserDelegate
 from flowback.users.serializer import UserGroupCreateSerializer, MyGroupSerializer, AddParticipantSerializer, \
     OnboardUserFirstSerializer, OnboardUserSecondSerializer, GroupParticipantSerializer, CreateGroupRequestSerializer, \
     UpdateGroupRequestSerializer
 from flowback.users.serializer import UserSerializer, SimpleUserSerializer, UserRegistrationSerializer, \
     GroupDetailsSerializer
-from flowback.polls.serializer import GroupPollCreateSerializer, GetGroupPollsListSerializer, \
-    GroupPollDetailsSerializer, \
-    CreatePollCommentSerializer, GetPollCommentsSerializer, GetPendingPollListSerializer, GetBookmarkPollListSerializer, \
-    GroupPollUpdateSerializer, CreatePollCounterProposalSerializer, GetPollCounterProposalDetailsSerializer, \
-    CreateCounterProposalCommentSerializer, DelegatorSerializer
-
+from flowback.polls.serializer import GroupPollCreateSerializer, GetGroupPollsListSerializer,\
+    GroupPollDetailsSerializer, CreatePollCommentSerializer, GetPollCommentsSerializer, \
+    PollProposalGetSerializer, PollProposalEventGetSerializer, PollProposalIndexCreateSerializer, \
+    PollProposalEventIndexCreateSerializer, GetPendingPollListSerializer, GetBookmarkPollListSerializer, \
+    GroupPollUpdateSerializer, PollProposalCreateSerializer, PollProposalEventCreateSerializer,\
+    GetPollCounterProposalDetailsSerializer, CreateCounterProposalCommentSerializer, DelegatorSerializer
+from flowback.polls.helper import PollAdapter
 
 class GroupPollViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -63,6 +68,7 @@ class GroupPollViewSet(viewsets.ViewSet):
             data = request.data
             poll_data = data.get('poll_details')
             poll_docs = data.getlist('poll_docs')
+            poll_type = data.get('poll_type')
             # serializer for create poll
             serializer = GroupPollCreateSerializer(data=json.loads(poll_data))
             if serializer.is_valid(raise_exception=False):
@@ -103,9 +109,9 @@ class GroupPollViewSet(viewsets.ViewSet):
                 poll.save()
 
                 if poll.type == Poll.Type.MISSION:
-                    PollCounterProposal.objects.create(
+                    PollProposal.objects.create(
                         poll=poll,
-                        type=PollCounterProposal.Type.DROP,
+                        type=PollProposal.Type.DROP,
                         proposal="Drop this mission"
                     )
 
@@ -469,7 +475,7 @@ class GroupPollViewSet(viewsets.ViewSet):
             if delegate_is_valid and user_is_group_member:
                 # Delete all poll votes
                 PollUserDelegate.objects.filter(user=user, group=group).delete()
-                PollCounterProposalsIndex.objects.filter(user=user, counter_proposal__poll__group=group).delete()
+                PollProposalIndex.objects.filter(user=user, counter_proposal__poll__group=group).delete()
                 PollUserDelegate.objects.create(user=user,
                                                 group=group,
                                                 delegator=delegator
@@ -497,14 +503,14 @@ class GroupPollViewSet(viewsets.ViewSet):
             if delegator:
                 # Copy delegator votes to user
                 if keep_delegator_votes:
-                    votes = copy.deepcopy(PollCounterProposalsIndex.objects.filter(
+                    votes = copy.deepcopy(PollProposalIndex.objects.filter(
                         user=delegator.delegator,
                         counter_proposal__poll__group=group
                     ).all())
                     for i in range(len(votes)):
                         votes[i].user = user
                         votes[i].id = None
-                    PollCounterProposalsIndex.objects.bulk_create(votes)
+                    PollProposalIndex.objects.bulk_create(votes)
                 # Delete all poll votes
                 PollUserDelegate.objects.filter(user=user, group=group).delete()
                 result = success_response(data=None, message="User successfully removed delegate")
@@ -672,16 +678,27 @@ class GroupPollViewSet(viewsets.ViewSet):
         return BadRequest(result)
 
     # TODO make file not a requirement
+    # TODO require events to input datetime
     @decorators.action(detail=False, methods=['post'], url_path="add_counter_proposal")
     def add_counter_proposal(self, request, *args, **kwargs):
         data = request.data
         user = request.user
         # get poll counter proposal filtered by user and poll
-        proposal = PollCounterProposal.objects.filter(user=user, poll__id=data.get('poll'))
+        proposal = PollProposal.objects.filter(user=user, poll__id=data.get('poll'))
         if not proposal:
             # serializer for create counter proposal for poll
-            serializer = CreatePollCounterProposalSerializer(data=data)
+            poll = Poll.objects.filter(id=data.get('poll')).first()
+            serializer = PollProposalCreateSerializer(data=data)
             if serializer.is_valid():
+                # Event Specific, Make sure date input is correct
+                if poll.type == Poll.Type.EVENT:
+                    if date := data.get('date'):
+                        try:
+                            datetime.datetime.strptime(date)
+                        except ValueError:
+                            result = failed_response(data=None, message="Invalid value passed to data.")
+                            return BadRequest(result)
+
                 serializer.save(user=user)
                 result = success_response(data=serializer.data, message="Counter proposal created successfully.")
                 return Created(result)
@@ -693,11 +710,12 @@ class GroupPollViewSet(viewsets.ViewSet):
     def __poll_votes_check(self, poll: Poll):
         # Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now())
         # Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now() + datetime.timedelta(hours=1))
+        adapter = PollAdapter(poll)
 
         # Counting Proposal Votes
         if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
-            counter_proposals = PollCounterProposal.objects.filter(poll=poll).all()
-            indexes = PollCounterProposalsIndex.objects.filter(counter_proposal__poll=poll)
+            counter_proposals = adapter.proposal.objects.filter(poll=poll).all()
+            indexes = adapter.index.objects.filter(counter_proposal__poll=poll)
             counter = {key.id: 0 for key in counter_proposals}
 
             # Reset all counter proposals final score
@@ -728,15 +746,111 @@ class GroupPollViewSet(viewsets.ViewSet):
                 counter_proposals[key].final_score = counter[counter_proposal.id]
 
             # Apply
-            PollCounterProposal.objects.bulk_update(counter_proposals, ['final_score'])
+            adapter.proposal.objects.bulk_update(counter_proposals, ['final_score'])
 
             # Poll Type Checks
             if poll.type == Poll.Type.MISSION:
                 top = counter_proposals.order_by('-final_score').first()
-                success = top and top.type != PollCounterProposal.Type.DROP and top.final_score
+                success = top and top.type != adapter.proposal.Type.DROP and top.final_score
                 Poll.objects.filter(id=poll.id).update(success=success)
 
             Poll.objects.filter(id=poll.id).update(votes_counted=True)
+
+    # TODO improve safety
+    @decorators.action(detail=False, methods=['post'], url_path="add_proposal")
+    def add_proposal(self, request, *args, **kwargs):
+        data = request.data
+        user = request.user
+        poll = get_object_or_404(Poll, pk=data.get('poll'))
+        serializer = None
+
+        # Event Proposal
+        if poll.type == poll.Type.EVENT:
+            serializer = PollProposalEventCreateSerializer(data=data)
+
+        # Other Proposals
+        else:
+            serializer = PollProposalCreateSerializer(data=data)
+
+        # Validation
+        if serializer and serializer.is_valid():
+            serializer.save(user=user)
+            return Response(status=status.HTTP_201_CREATED)
+
+        else:
+            error = 'Unknown parameter proposal_type' if not serializer else serializer.errors
+            return Response(error, status.HTTP_400_BAD_REQUEST)
+
+    @decorators.action(detail=True, methods=['get'], url_path="all_proposals")
+    def all_proposals(self, request, pk):
+        poll = get_object_or_404(Poll, pk=pk)
+        adapter = PollAdapter(poll)
+        self.__poll_votes_check(poll)
+
+        proposal = get_list_or_404(adapter.proposal.objects.order_by('-created_at'), poll=poll)
+        proposal = adapter.proposal_get_serializer(proposal, many=True)
+        return Response(proposal.data, status=status.HTTP_200_OK)
+
+    @decorators.action(detail=True, methods=['get'], url_path="user_proposal")
+    def user_proposal(self, request, pk):
+        user = request.user
+        poll = get_object_or_404(Poll, pk=pk)
+        adapter = PollAdapter(poll)
+        self.__poll_votes_check(poll)
+
+        proposal = get_object_or_404(adapter.proposal, poll=poll, user=user)
+        proposal = adapter.proposal_get_serializer(proposal)
+        return Response(proposal.data, status=status.HTTP_200_OK)
+
+    @decorators.action(detail=True, methods=['get'], url_path="index_proposals")
+    def index_proposals(self, request, pk):
+        user = request.user
+        poll = get_object_or_404(Poll, pk=pk)
+        adapter = PollAdapter(poll)
+        self.__poll_votes_check(poll)
+
+        data = {}
+        delegate = PollUserDelegate.objects.filter(user=user, group=poll.group).first()
+        if delegate:
+            data['delegator_id'] = delegate.id
+
+        index = get_list_or_404(PollProposalIndex, user=delegate or user, proposal__poll=poll)
+        positive_index = [x.proposal for x in sorted([x for x in index if x.is_positive],
+                                                     key=lambda x: x.priority)]
+        negative_index = [x.proposal for x in sorted([x for x in index if not x.is_positive],
+                                                     key=lambda x: x.priority)]
+
+        data['positive_proposals'] = adapter.proposal_get_serializer(positive_index, many=True).data
+        data['negative_proposals'] = adapter.proposal_get_serializer(negative_index, many=True).data
+        return Response(data, status=status.HTTP_200_OK)
+
+    # TODO Improve safety
+    @decorators.action(detail=True, methods=['post', 'update'], url_path='update_proposal_index')
+    def update_index_proposals(self, request, pk):
+        user = request.user
+        data = request.data
+        poll = get_object_or_404(Poll, pk=pk)
+        adapter = PollAdapter(poll)
+
+        # Positive Indexes
+        index = [dict(proposal=y, user=user.id, poll=poll.id,
+                      priority=x, is_positive=True
+                      ) for x, y in enumerate(data.getlist('positive', []))]
+
+        # Negative Indexes
+        index += [dict(proposal=y, user=user.id, poll=poll.id,
+                       priority=x, is_positive=False
+                       ) for x, y in enumerate(data.getlist('negative', []))]
+
+        index = adapter.index_create_serializer(data=index, many=True)
+
+        if index.is_valid():
+            adapter.index.objects.filter(user=user, proposal__poll=poll).delete()
+            index.save()
+            return Response(status=status.HTTP_201_CREATED)
+
+        else:
+            return Response(index.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @decorators.action(detail=False, methods=['post'], url_path="get_all_counter_proposal")
     def get_all_counter_proposal(self, request, *args, **kwargs):
@@ -746,7 +860,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         if poll:
             self.__poll_votes_check(poll)
             # get counter proposal for poll filtered by user and poll
-            proposals = PollCounterProposal.objects.filter(poll__id=poll.id).order_by('-created_at')
+            proposals = PollProposal.objects.filter(poll__id=poll.id).order_by('-created_at')
             # serializer for get details of counter proposal
             serializer = GetPollCounterProposalDetailsSerializer(proposals, many=True, context={'request': self.request})
             response_data = dict()
@@ -756,15 +870,15 @@ class GroupPollViewSet(viewsets.ViewSet):
             if delegate:
                 response_data['delegator'] = {"username": user.username, "user_id": user.id}
                 user_to_index = delegate.delegator
-            user_proposal_index = PollCounterProposalsIndex.objects.filter(counter_proposal__poll_id=poll,
-                                                                           user=user_to_index)
+            user_proposal_index = PollProposalIndex.objects.filter(counter_proposal__poll_id=poll,
+                                                                   user=user_to_index)
             if user_proposal_index:
-                positive_proposal_index = [x.counter_proposal.id for x in sorted([x for x in user_proposal_index
-                                                                                       if x.is_positive],
-                                           key=lambda x: x.priority)]
-                negative_proposal_index = [x.counter_proposal.id for x in sorted([x for x in user_proposal_index
-                                                                                       if not x.is_positive],
-                                           key=lambda x: x.priority)]
+                positive_proposal_index = [x.proposal.id for x in sorted([x for x in user_proposal_index
+                                                                          if x.is_positive],
+                                                                         key=lambda x: x.priority)]
+                negative_proposal_index = [x.proposal.id for x in sorted([x for x in user_proposal_index
+                                                                          if not x.is_positive],
+                                                                         key=lambda x: x.priority)]
                 response_data['positive_proposal_index'] = positive_proposal_index
                 response_data['negative_proposal_index'] = negative_proposal_index
 
@@ -807,7 +921,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         if poll:
             self.__poll_votes_check(poll)
             # get counter proposal for poll filtered by user and poll
-            proposal = PollCounterProposal.objects.filter(poll__id=poll.id, user=user).first()
+            proposal = PollProposal.objects.filter(poll__id=poll.id, user=user).first()
             # serializer for get details of counter proposal of poll
             serializer = GetPollCounterProposalDetailsSerializer(proposal, context={'request': self.request})
             result = success_response(data=serializer.data, message="Counter proposal get successfully.")
@@ -818,22 +932,22 @@ class GroupPollViewSet(viewsets.ViewSet):
 
     def __update_proposal_indexes(self, user: User, poll: Poll, positive_proposal_index: list,
                                   negative_proposal_index: list):
-        positive_proposal_index_check = PollCounterProposal.objects.filter(id__in=positive_proposal_index, poll=poll)
-        negative_proposal_index_check = PollCounterProposal.objects.filter(id__in=negative_proposal_index, poll=poll)
+        positive_proposal_index_check = PollProposal.objects.filter(id__in=positive_proposal_index, poll=poll)
+        negative_proposal_index_check = PollProposal.objects.filter(id__in=negative_proposal_index, poll=poll)
         if len(positive_proposal_index_check) == len(positive_proposal_index) \
                 and len(negative_proposal_index_check) == len(negative_proposal_index)\
                 and not set(positive_proposal_index) & set(negative_proposal_index):
 
-            PollCounterProposalsIndex.objects.filter(counter_proposal__poll=poll, user=user).delete()
-            PollCounterProposalsIndex.objects.bulk_create(
-                [PollCounterProposalsIndex(counter_proposal_id=c_id,
-                                           user=user,
-                                           priority=i,
-                                           is_positive=True) for i, c_id in enumerate(positive_proposal_index)] +
-                [PollCounterProposalsIndex(counter_proposal_id=c_id,
-                                           user=user,
-                                           priority=i,
-                                           is_positive=False) for i, c_id in enumerate(negative_proposal_index)]
+            PollProposalIndex.objects.filter(counter_proposal__poll=poll, user=user).delete()
+            PollProposalIndex.objects.bulk_create(
+                [PollProposalIndex(counter_proposal_id=c_id,
+                                   user=user,
+                                   priority=i,
+                                   is_positive=True) for i, c_id in enumerate(positive_proposal_index)] +
+                [PollProposalIndex(counter_proposal_id=c_id,
+                                   user=user,
+                                   priority=i,
+                                   is_positive=False) for i, c_id in enumerate(negative_proposal_index)]
             )
             return
 
@@ -871,7 +985,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         proposal = data.get('proposal', None)
         if proposal:
             # get counter proposal of poll
-            proposal = PollCounterProposal.objects.filter(id=proposal)
+            proposal = PollProposal.objects.filter(id=proposal)
             if proposal:
                 # check the permission of user to access the proposal
                 proposal = proposal.filter(Q(user=user) | Q(poll__group__owners__in=[user]) | Q(poll__group__admins__in=[user]) | Q(poll__group__moderators__in=[user]))
@@ -886,12 +1000,12 @@ class GroupPollViewSet(viewsets.ViewSet):
         result = failed_response(data=None, message="Please pass poll parameter with poll id.")
         return BadRequest(result)
 
-    @decorators.action(detail=False, methods=['post'], url_path="create_counter_proposal_comment")
+    @decorators.action(detail=False, methods=['post'], url_path="create_countercreate_counter_proposal_comment")
     def create_counter_proposal_comment(self, request, *args, **kwargs):
         user = request.user
         data = request.data
         # get counter proposal of poll by id
-        counter_proposal = PollCounterProposal.objects.filter(id=data.get('counter_proposal'))
+        counter_proposal = PollProposal.objects.filter(id=data.get('counter_proposal'))
         if counter_proposal:
             # check the user permission
             counter_proposal = counter_proposal.filter(Q(user=user),  Q(poll__group__owners__in=[user]) | Q(poll__group__admins__in=[user]) | Q(poll__group__moderators__in=[user]) |
@@ -905,7 +1019,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                                                                          reply_to=serializer.validated_data.get('reply_to'),
                                                                          created_by=user, modified_by=user)
                     comment.save()
-                    serializer = GetPollCounterProposalDetailsSerializer(comment.counter_proposal, context={'request': self.request})
+                    serializer = GetPollCounterProposalDetailsSerializer(comment.proposal, context={'request': self.request})
                     result = success_response(data=serializer.data, message="Create counter proposal comment successfully.")
                     return Created(result)
                 result = failed_response(data=serializer.errors, message="")
@@ -922,7 +1036,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         # get counter proposal comment of poll id
         counter_proposal_comment = PollCounterProposalComments.objects.filter(id=data.get('comment_id')).first()
         if counter_proposal_comment:
-            group = counter_proposal_comment.counter_proposal.poll.group
+            group = counter_proposal_comment.proposal.poll.group
             # check the user permission and edit the comment
             if counter_proposal_comment.created_by == user or user in group.owners.all() or user in group.admins.all() or user in group.moderators.all():
                 counter_proposal_comment.comment = data.get('comment')
@@ -930,7 +1044,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                 counter_proposal_comment.edited = True
                 counter_proposal_comment.save()
 
-                serializer = GetPollCounterProposalDetailsSerializer(counter_proposal_comment.counter_proposal, context={'request': self.request})
+                serializer = GetPollCounterProposalDetailsSerializer(counter_proposal_comment.proposal, context={'request': self.request})
                 result = success_response(data=serializer.data, message="Counter proposal comment edited successfully.")
                 return Created(result)
             result = failed_response(data=None, message="Only comment creator, owner of group, admins or moderators"
@@ -946,7 +1060,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         # get counter proposal comment of poll by id
         comment = PollCounterProposalComments.objects.filter(id=data.get('comment')).first()
         if comment:
-            counter_proposal = comment.counter_proposal
+            counter_proposal = comment.proposal
             group = counter_proposal.poll.group
             # check user permission and delete comment
             if comment.created_by == user or user in group.owners.all() or user in group.admins.all() or user in group.moderators.all():
@@ -976,7 +1090,7 @@ class GroupPollViewSet(viewsets.ViewSet):
             else:
                 counter_proposal_comment.likes.remove(user)
                 counter_proposal_comment.save()
-            serializer = GetPollCounterProposalDetailsSerializer(counter_proposal_comment.counter_proposal, context={'request': self.request})
+            serializer = GetPollCounterProposalDetailsSerializer(counter_proposal_comment.proposal, context={'request': self.request})
             result = success_response(data=serializer.data, message="Comment deleted successfully.")
             return Created(result)
         result = failed_response(data=None, message="Comment does not exist.")
