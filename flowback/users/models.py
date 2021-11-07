@@ -29,7 +29,6 @@ from taggit.managers import TaggableManager
 
 from flowback.base.models import TimeStampedUUIDModel
 
-
 class CustomUserManager(BaseUserManager):
 
     def create_user(self, email, password=None):

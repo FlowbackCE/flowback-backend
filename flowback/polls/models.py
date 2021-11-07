@@ -30,6 +30,8 @@ from django.utils.translation import gettext_lazy as _
 # Create your models here.
 from taggit.managers import TaggableManager
 
+from tree_queries.models import TreeNode
+
 from flowback.base.models import TimeStampedUUIDModel
 from flowback.users.models import Group, User
 
@@ -215,3 +217,11 @@ class PollCounterProposalComments(TimeStampedUUIDModel):
     likes = models.ManyToManyField(User, related_name='counter_proposal_likes_by')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='counter_proposal_comment_created_by')
     modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='counter_proposal_comment_modified_by')
+
+
+class PollProposalThreads(TreeNode, TimeStampedUUIDModel):
+    proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
+    comment = models.TextField()
+    score = models.ManyToManyField(User, related_name='proposal_comment_score')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_comment_created_by')
+    modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_comment_modified_by')

@@ -22,7 +22,7 @@ from rest_framework import status
 from flowback.polls.serializer import PollProposalCreateSerializer, PollProposalEventCreateSerializer, \
     PollProposalIndexCreateSerializer, PollProposalEventIndexCreateSerializer
 from django.core.files.uploadedfile import SimpleUploadedFile
-from flowback.polls.models import Poll, PollProposal
+from flowback.polls.models import Poll, PollProposal, PollProposalThreads
 from flowback.polls.views import GroupPollViewSet
 import json
 from django.urls import reverse
@@ -220,6 +220,21 @@ class TestBaseAPITestCase(APITestCase):
         generate_proposals(self.user_two, *[self.poll_one, self.poll_two])
         generate_proposals(self.user_three, *[self.poll_one, self.poll_two])
 
+        def generate_threads(user, poll, parent=None):
+            return PollProposalThreads.objects.create(
+                proposal=PollProposal.objects.get(user=user, poll=poll),
+                comment="Comment owo",
+                parent=parent,
+                created_by=user,
+                modified_by=user
+            )
+
+        p1 = generate_threads(self.user_one, self.poll_one)
+        q1 = generate_threads(self.user_one, self.poll_two)
+        p2 = generate_threads(self.user_one, self.poll_one, p1)
+        generate_threads(self.user_two, self.poll_two, q1)
+        generate_threads(self.user_one, self.poll_one, p2)
+
     def generate_index_proposals(self, user, positive, negative):
         x = len(positive + negative)
         data = []
@@ -282,3 +297,14 @@ class TestGetProposals(TestBaseAPITestCase):
         self.assertEqual(len(response.data['positive_proposals'] + response.data['negative_proposals']), 3)
         self.assertEqual(response.data['positive_proposals'][0]['id'], 3)
         self.assertEqual(response.data['negative_proposals'][0]['id'], 5)
+
+    def test_get_comments(self):
+        threads = PollProposalThreads.objects.filter(parent=None).order_by("-created_at").with_tree_fields()
+        threads2 = PollProposalThreads.objects.with_tree_fields()
+        threads3 = PollProposalThreads.objects.filter(parent_id=1)\
+            .with_tree_fields().extra(filter=['__tree.tree_depth__lte=2'], order_by=['__tree.tree_depth']).first()
+        print(threads)
+        print(threads2)
+        print(threads3)
+        print(threads.first().tree_path)
+        print(threads2.first().__dict__)

@@ -39,7 +39,7 @@ default_router.register("friend", FriendsViewSet, basename="friend")
 default_router.register('group_chat', GroupChatViewSet, basename='group_chat')
 
 urlpatterns = default_router.urls + singleton_router.urls + [
-    path("login",UserLogin.as_view(),name="user-login"),
+    path("login", UserLogin.as_view(), name="user-login"),
     path("logout", UserLogout.as_view(), name="user-logout"),
     url(r'^password_reset/validate_token/',
         reset_pass_view.ResetPasswordValidateToken.as_view(authentication_classes=[], permission_classes=[]),
@@ -49,5 +49,5 @@ urlpatterns = default_router.urls + singleton_router.urls + [
         name="reset-password-confirm"),
     url(r'^password_reset/',
         reset_pass_view.ResetPasswordRequestToken.as_view(authentication_classes=[], permission_classes=[]),
-        name='reset-password-request'),
+        name='reset-password-request')
 ]
