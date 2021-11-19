@@ -3,25 +3,37 @@
 import django_filters
 
 from flowback.users.models import User
-from flowback.notifications.models import Notification, UserNotifications, NotificationSubscribers
+from flowback.notifications.models import UserNotifications, NotificationSubscribers
 
 
-class NotificationFilter(django_filters.FilterSet):
+class UserNotificationFilter(django_filters.FilterSet):
+    type = django_filters.CharFilter(field_name='notification__type', lookup_expr='iexact')
+    target = django_filters.NumberFilter(field_name='notification__target', lookup_expr='iexact')
+
     class Meta:
-        model = Notification
-        fields = ('type', 'target', 'message', 'read', 'date')
+        model = UserNotifications
+        fields = ('id',
+                  'notification__id',
+                  'notification__type',
+                  'notification__target',
+                  'notification__link_type',
+                  'notification__link_target',
+                  'notification__message',
+                  'notification__date',
+                  'read')
 
 
 class NotificationSubscribersFilter(django_filters.FilterSet):
     class Meta:
         model = NotificationSubscribers
-        fields = 'user'
+        fields = ['user']
 
 
 class UserNotificationSubscriptionsFilter(django_filters.FilterSet):
+
     class Meta:
         model = NotificationSubscribers
-        fields = ('type', 'target')
+        fields = ['type', 'target']
 
 
 # User notifications
@@ -30,7 +42,7 @@ def user_notification_list(*, user: User, filters=None):
 
     qs = UserNotifications.objects.filter(user=user).all()
 
-    return NotificationFilter(filters, qs)
+    return UserNotificationFilter(filters, qs).qs
 
 
 # User subscriptions list

@@ -40,6 +40,7 @@ from django.shortcuts import get_object_or_404, get_list_or_404
 
 from flowback.response import Created, BadRequest, NotFound
 from flowback.response import Ok
+from flowback.notifications.services import notification_create, notification_update, notification_delete
 from flowback.response_handler import success_response, failed_response
 from flowback.users.models import Group, OnboardUser
 from flowback.users.models import User
@@ -115,6 +116,25 @@ class GroupPollViewSet(viewsets.ViewSet):
                         proposal="Drop this mission"
                     )
 
+                if poll.accepted:
+                    notification_create(
+                        notification_type='group',
+                        notification_target=group.id,
+                        link_type='poll',
+                        link_target=poll.id,
+                        message=f'Group "{group.group_name}" created a new poll: "{poll.title}".',
+                        date=poll.accepted_at
+                    )
+
+                    notification_create(
+                        notification_type='poll',
+                        notification_target=poll.id,
+                        link_type='poll',
+                        link_target=poll.id,
+                        message=f'Poll "{poll.title}" is now finished.',
+                        date=poll.end_time
+                    )
+
                 # return success response with poll id
                 result = success_response(data={"poll": poll.id}, message="")
                 return Created(result)
@@ -150,6 +170,25 @@ class GroupPollViewSet(viewsets.ViewSet):
                         poll.tag.add(tag)
                 poll.modified_by = request.user
                 poll.save()
+
+                if poll.accepted:
+                    notification_update(
+                        notification_type='group',
+                        notification_target=group.id,
+                        link_type='poll',
+                        link_target=poll.id,
+                        message=f'Group "{group.group_name}" created a new poll: "{data.get("title", poll.title)}".'
+                    )
+
+                    notification_update(
+                        notification_type='poll',
+                        notification_target=poll.id,
+                        link_type='poll',
+                        link_target=poll.id,
+                        message=f'Poll "{poll.title}" is now finished.',
+                        date=data.get('end_time', poll.end_time)
+                    )
+
                 # return success response
                 result = success_response(data=None, message="")
                 return Created(result)
@@ -241,6 +280,25 @@ class GroupPollViewSet(viewsets.ViewSet):
                 poll.accepted_at = datetime.datetime.now()
                 poll.save()
                 serializer = GroupPollDetailsSerializer(poll, context={'request': self.request})
+
+                notification_create(
+                    notification_type='group',
+                    notification_target=group.id,
+                    link_type='poll',
+                    link_target=poll.id,
+                    message=f'Group "{group.group_name}" created a new poll: "{poll.title}".',
+                    date=poll.accepted_at
+                )
+
+                notification_create(
+                    notification_type='poll',
+                    notification_target=poll.id,
+                    link_type='poll',
+                    link_target=poll.id,
+                    message=f'Poll "{poll.title}" is now finished.',
+                    date=poll.end_time
+                )
+
                 result = success_response(data=serializer.data, message="")
                 return Created(result)
             result = failed_response(data=None, message="You don't have permission to verify the poll.")
@@ -677,36 +735,6 @@ class GroupPollViewSet(viewsets.ViewSet):
         result = failed_response(data=None, message="Poll does not exist.")
         return BadRequest(result)
 
-    # TODO make file not a requirement
-    # TODO require events to input datetime
-    @decorators.action(detail=False, methods=['post'], url_path="add_counter_proposal")
-    def add_counter_proposal(self, request, *args, **kwargs):
-        data = request.data
-        user = request.user
-        # get poll counter proposal filtered by user and poll
-        proposal = PollProposal.objects.filter(user=user, poll__id=data.get('poll'))
-        if not proposal:
-            # serializer for create counter proposal for poll
-            poll = Poll.objects.filter(id=data.get('poll')).first()
-            serializer = PollProposalCreateSerializer(data=data)
-            if serializer.is_valid():
-                # Event Specific, Make sure date input is correct
-                if poll.type == Poll.Type.EVENT:
-                    if date := data.get('date'):
-                        try:
-                            datetime.datetime.strptime(date)
-                        except ValueError:
-                            result = failed_response(data=None, message="Invalid value passed to data.")
-                            return BadRequest(result)
-
-                serializer.save(user=user)
-                result = success_response(data=serializer.data, message="Counter proposal created successfully.")
-                return Created(result)
-            result = failed_response(data=serializer.errors, message="")
-            return BadRequest(result)
-        result = failed_response(data=None, message="Proposal is already exist.")
-        return BadRequest(result)
-
     def __poll_votes_check(self, poll: Poll):
         # Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now())
         # Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now() + datetime.timedelta(hours=1))
@@ -774,7 +802,17 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         # Validation
         if serializer and serializer.is_valid():
-            serializer.save(user=user)
+            proposal = serializer.save(user=user)
+
+            notification_create(
+                notification_type='poll',
+                notification_target=poll.id,
+                link_type='proposal',
+                link_target=proposal.id,
+                message=f'New proposal added to "{poll.title}".',
+                date=datetime.datetime.now()
+            )
+
             return Response(status=status.HTTP_201_CREATED)
 
         else:
@@ -824,77 +862,6 @@ class GroupPollViewSet(viewsets.ViewSet):
         data['negative_proposals'] = adapter.proposal_get_serializer(negative_index, many=True).data
         return Response(data, status=status.HTTP_200_OK)
 
-    # TODO Improve safety
-    @decorators.action(detail=True, methods=['post', 'update'], url_path='update_proposal_index')
-    def update_index_proposals(self, request, pk):
-        user = request.user
-        data = request.data
-        poll = get_object_or_404(Poll, pk=pk)
-        adapter = PollAdapter(poll)
-
-        # Positive Indexes
-        index = [dict(proposal=y, user=user.id, poll=poll.id,
-                      priority=x, is_positive=True
-                      ) for x, y in enumerate(data.getlist('positive', []))]
-
-        # Negative Indexes
-        index += [dict(proposal=y, user=user.id, poll=poll.id,
-                       priority=x, is_positive=False
-                       ) for x, y in enumerate(data.getlist('negative', []))]
-
-        index = adapter.index_create_serializer(data=index, many=True)
-
-        if index.is_valid():
-            adapter.index.objects.filter(user=user, proposal__poll=poll).delete()
-            index.save()
-            return Response(status=status.HTTP_201_CREATED)
-
-        else:
-            return Response(index.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @decorators.action(detail=False, methods=['post'], url_path="get_all_counter_proposal")
-    def get_all_counter_proposal(self, request, *args, **kwargs):
-        data = request.data
-        user = request.user
-        poll = Poll.objects.filter(id=data.get('poll')).first() if data.get('poll') else None
-        if poll:
-            self.__poll_votes_check(poll)
-            # get counter proposal for poll filtered by user and poll
-            proposals = PollProposal.objects.filter(poll__id=poll.id).order_by('-created_at')
-            # serializer for get details of counter proposal
-            serializer = GetPollCounterProposalDetailsSerializer(proposals, many=True, context={'request': self.request})
-            response_data = dict()
-            response_data['counter_proposals'] = serializer.data
-            user_to_index = user
-            delegate = PollUserDelegate.objects.filter(user=user, group=poll.group).first()
-            if delegate:
-                response_data['delegator'] = {"username": user.username, "user_id": user.id}
-                user_to_index = delegate.delegator
-            user_proposal_index = PollProposalIndex.objects.filter(counter_proposal__poll_id=poll,
-                                                                   user=user_to_index)
-            if user_proposal_index:
-                positive_proposal_index = [x.proposal.id for x in sorted([x for x in user_proposal_index
-                                                                          if x.is_positive],
-                                                                         key=lambda x: x.priority)]
-                negative_proposal_index = [x.proposal.id for x in sorted([x for x in user_proposal_index
-                                                                          if not x.is_positive],
-                                                                         key=lambda x: x.priority)]
-                response_data['positive_proposal_index'] = positive_proposal_index
-                response_data['negative_proposal_index'] = negative_proposal_index
-
-                # TODO make frontend support positive and negative proposal index instead of old standard
-                response_data['proposal_indexes'] = {}
-                for val, c_id in enumerate(positive_proposal_index):
-                    response_data['proposal_indexes'][str(c_id)] = val + 1
-                for val, c_id in enumerate(negative_proposal_index):
-                    response_data['proposal_indexes'][str(c_id)] = -1 - val
-
-            result = success_response(data=response_data, message="Counter proposal get successfully.")
-            return Ok(result)
-
-        result = failed_response(data=None, message="Pass poll parameter with poll id.")
-        return BadRequest(result)
-
     @decorators.action(detail=False, methods=['post'], url_path="get_user_delegator")
     def get_user_delegator(self, request, *args, **kwargs):  # TODO Adjust this to work with delegate system
         data = request.data
@@ -912,23 +879,6 @@ class GroupPollViewSet(viewsets.ViewSet):
             return NotFound(result)
         result = failed_response(data=None, message="User has no delegator attached to group")
         return NotFound(result)
-
-    @decorators.action(detail=False, methods=['post'], url_path="get_counter_proposal")
-    def get_counter_proposal(self, request, *args, **kwargs):
-        data = request.data
-        user = request.user
-        poll = Poll.objects.filter(id=data.get('poll')).first() if data.get('poll') else None
-        if poll:
-            self.__poll_votes_check(poll)
-            # get counter proposal for poll filtered by user and poll
-            proposal = PollProposal.objects.filter(poll__id=poll.id, user=user).first()
-            # serializer for get details of counter proposal of poll
-            serializer = GetPollCounterProposalDetailsSerializer(proposal, context={'request': self.request})
-            result = success_response(data=serializer.data, message="Counter proposal get successfully.")
-            return Created(result)
-
-        result = failed_response(data=None, message="Please pass poll parameter with poll id.")
-        return BadRequest(result)
 
     def __update_proposal_indexes(self, user: User, poll: Poll, positive_proposal_index: list,
                                   negative_proposal_index: list):
@@ -952,31 +902,6 @@ class GroupPollViewSet(viewsets.ViewSet):
             return
 
         raise Exception("Input counter_proposals have been altered or deleted")
-
-    @decorators.action(detail=False, methods=['post'], url_path="update_proposal_indexes")
-    def update_proposal_indexes(self, request, *args, **kwargs):
-        data = request.data
-        user = request.user
-        positive_proposal_indexes = data.get('positive_proposal_indexes', None)
-        negative_proposal_indexes = data.get('negative_proposal_indexes', None)
-        poll = data.get('poll', None)
-        if poll and isinstance(positive_proposal_indexes, list) and isinstance(negative_proposal_indexes, list):
-            poll = Poll.objects.filter(id=poll).first()
-            group = Group.objects.filter(Q(owners__in=[user]) | Q(admins__in=[user]) |
-                                         Q(moderators__in=[user]) | Q(members__in=[user]) |
-                                         Q(delegators__in=[user]), id=poll.group_id).first()
-            if poll:
-                if group:
-                    delegator = PollUserDelegate.objects.filter(user=user, group=poll.group).first()
-                    if not delegator:
-                        self.__update_proposal_indexes(user, poll, positive_proposal_indexes, negative_proposal_indexes)
-                        result = success_response(data=None, message="Counter proposal index updated successfully.")
-                        return Ok(result)
-                    return BadRequest(failed_response(data="", message="User cannot vote when votes is already"
-                                                                       " delegated"))
-                return BadRequest(failed_response(data="", message="User is not in group related to the poll"))
-            return BadRequest(failed_response(data="", message="Invalid Poll ID"))
-        return BadRequest(failed_response(data="", message="Missing arguments"))
 
     @decorators.action(detail=False, methods=['post'], url_path="delete_counter_proposal")
     def delete_counter_proposal(self, request, *args, **kwargs):

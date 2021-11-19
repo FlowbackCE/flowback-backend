@@ -98,7 +98,7 @@ class Poll(TimeStampedUUIDModel):
     top_proposal = models.ForeignKey('polls.PollProposal', related_name="poll_top_proposal",
                                      on_delete=models.DO_NOTHING, null=True, blank=True)
     success = models.BooleanField(default=False)
-    files = models.ManyToManyField(PollDocs, related_name='poll_documents')
+    files = models.ManyToManyField(PollDocs, related_name='poll_documents', blank=True, null=True)
     accepted = models.BooleanField(default=True)
     accepted_at = models.DateTimeField(_('Request accepted time'), null=True, blank=True)
     votes_counted = models.BooleanField(default=False)  # Determines if the counter proposals have had their votes counted
