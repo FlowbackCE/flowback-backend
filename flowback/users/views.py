@@ -24,6 +24,7 @@ import datetime
 from random import randint
 from django.core.mail import send_mail
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from rest_framework import decorators, viewsets, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -38,7 +39,7 @@ from flowback.response import Created, BadRequest
 from flowback.response import Ok
 from flowback.response_handler import success_response, failed_response
 from flowback.users.models import Group, OnboardUser, GroupDocs, GroupRequest, FriendChatMessage, GroupChatMessage
-from flowback.users.models import User
+from flowback.users.models import User, PasswordReset
 from flowback.users.models import Country, State, City
 from flowback.users.models import Friends
 from flowback.polls.models import Poll
@@ -47,7 +48,8 @@ from flowback.users.serializer import UserGroupCreateSerializer, MyGroupSerializ
     UpdateGroupRequestSerializer, GetChatMessagesSerializer, GetAllGroupRoomsSerializer, GetGroupChatMessagesSerializer
 from flowback.users.serializer import UserSerializer, SimpleUserSerializer, UserRegistrationSerializer, \
     GroupDetailsSerializer, CreateGroupDocSerializer, GroupDocsListSerializer, GetGroupJoinRequestListSerializer, \
-    SearchGroupSerializer, GetAllCountrySerializer, GetAllStatesByCountries, GetAllCityByStateSerializer
+    SearchGroupSerializer, GetAllCountrySerializer, GetAllStatesByCountries, GetAllCityByStateSerializer, \
+    ResetPasswordSerializer, ResetPasswordVerifySerializer
 from flowback.users.serializer import CreateFriendRequestSerializer, GetAllFriendRequestSerializer, GetAllFriendsRoomSerializer
 from flowback.polls.serializer import SearchPollSerializer
 from settings.base import EMAIL_HOST_USER, DEBUG
@@ -102,6 +104,36 @@ class UserViewSet(viewsets.ViewSet):
             result = failed_response(data=serializer.errors, message="")
             return BadRequest(result)
 
+    @decorators.action(detail=False, methods=['post'], url_path="reset-password-one")
+    def reset_password_one(self, request):
+        data = request.data
+        serializer = ResetPasswordSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        user = get_object_or_404(User, **serializer.data)
+        code = random.randint(100000, 999999)
+        PasswordReset.objects.create(user=user, verification_code=code)
+        send_mail('Flowback Reset Password', 'Please Enter This Code: %s' % (code),
+                  EMAIL_HOST_USER,
+                  [str(serializer.data.get('email'))])
+
+        return Response(status=status.HTTP_201_CREATED)
+
+    @decorators.action(detail=False, methods=['post'], url_path="reset-password-two")
+    def reset_password_two(self, request):
+        data = request.data
+        serializer = ResetPasswordVerifySerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.data.get('email')
+        code = serializer.data.get('verification_code')
+        password = serializer.data.get('password')
+        verification = get_object_or_404(PasswordReset, email=email, verification_code=code)
+
+        verification.user.set_password(password)
+        verification.user.save()
+        return Response(status=status.HTTP_200_OK)
+        
     @decorators.action(detail=False, methods=['post'], url_path="sign_up_two")
     def sign_up_two(self, request, *args, **kwargs):
         data = request.data

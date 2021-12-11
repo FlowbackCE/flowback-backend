@@ -39,7 +39,8 @@ import environ
 
 BASE_DIR = os.path.dirname((os.path.dirname(__file__)))
 print(BASE_DIR)
-env = environ.Env(DEBUG=(bool, True))
+env = environ.Env(DEBUG=(bool, False))
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -47,9 +48,6 @@ env = environ.Env(DEBUG=(bool, True))
 # SECURITY WARNING: keep the secret key used in production secret!
 #
 SECRET_KEY = os.getenv("DJANGO_SECRET")
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -156,14 +154,14 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if not DEBUG else \
-                "django.core.mail.backends.dummy.EmailBackend"
+                 "django.core.mail.backends.dummy.EmailBackend"
 EMAIL_HOST = env('EMAIL_HOST', default='<smtp.yourserver.com>')
 EMAIL_PORT = env('EMAIL_PORT', default='<your-server-port>')
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='<your-email>')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_USER', default='<your-email-password>')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='<your-email-password>')
 EMAIL_USE_TLS = env('EMAIL_USE_TLS', default=True)
 EMAIL_USE_SSL = env('EMAIL_USE_SSL', default=False)
-
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 

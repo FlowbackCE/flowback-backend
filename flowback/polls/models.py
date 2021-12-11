@@ -37,7 +37,7 @@ from flowback.users.models import Group, User
 
 
 class Post(TimeStampedUUIDModel):
-    group = models.ForeignKey(Group,on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
     description = models.TextField(_('Description'), blank=True)
     image = models.ImageField(null=True, blank=True)
     author = models.ForeignKey(settings.AUTH_USER_MODEL,

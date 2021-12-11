@@ -72,6 +72,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class ResetPasswordVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    verification_code = serializers.IntegerField()
+    password = serializers.CharField()
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

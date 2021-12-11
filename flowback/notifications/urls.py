@@ -10,12 +10,12 @@ from flowback.notifications.views import (
 )
 
 notification_patterns = [
-    path('', NotificationListApi.as_view(), name='list'),
-    path('subscriptions/', NotificationSubscriptionsApi.as_view(), name='subscriptions'),
-    path('subscribed/', NotificationSubscribedApi.as_view(), name='subscribed'),
-    path('<int:notification_id>/update/', NotificationUpdateApi.as_view(), name='update'),
-    path('subscribe/', NotificationSubscribeApi.as_view(), name='subscribe'),
-    path('unsubscribe', NotificationUnsubscribeApi.as_view(), name='unsubscribe')
+    path('', NotificationListApi.as_view(), name='notifications-list'),
+    path('subscriptions/', NotificationSubscriptionsApi.as_view(), name='notifications-subscriptions'),
+    path('subscribed/', NotificationSubscribedApi.as_view(), name='notifications-subscribed'),
+    path('<int:notification_id>/update/', NotificationUpdateApi.as_view(), name='notifications-update'),
+    path('subscribe/', NotificationSubscribeApi.as_view(), name='notifications-subscribe'),
+    path('unsubscribe', NotificationUnsubscribeApi.as_view(), name='notifications-unsubscribe')
 ]
 
 urlpatterns = [

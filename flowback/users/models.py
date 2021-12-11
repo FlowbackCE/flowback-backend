@@ -16,9 +16,11 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see https://www.gnu.org/licenses/.
+import datetime
 
 from django.contrib.auth.models import (
     BaseUserManager, AbstractBaseUser, PermissionsMixin, UserManager)
+from rest_framework.exceptions import ValidationError
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.mail import send_mail
 from django.db import models
@@ -212,6 +214,15 @@ class OnboardUser(TimeStampedUUIDModel):
     screen_name = models.CharField(max_length=50)
     verification_code = models.IntegerField()
     is_verified = models.BooleanField(default=False)
+
+
+class PasswordReset(TimeStampedUUIDModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    verification_code = models.IntegerField(unique=True)
+
+    def clean(self):
+        if not self.created_at <= self.created_at + datetime.timedelta(hours=1):
+            raise ValidationError('Verification code has expired')
 
 
 class Country(models.Model):

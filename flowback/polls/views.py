@@ -862,6 +862,34 @@ class GroupPollViewSet(viewsets.ViewSet):
         data['negative_proposals'] = adapter.proposal_get_serializer(negative_index, many=True).data
         return Response(data, status=status.HTTP_200_OK)
 
+    # TODO Improve safety, check if user in poll group
+    @decorators.action(detail=True, methods=['post', 'update'], url_path='update_proposal_index')
+    def update_index_proposals(self, request, pk):
+        user = request.user
+        data = request.data
+        poll = get_object_or_404(Poll, pk=pk)
+        adapter = PollAdapter(poll)
+
+        # Positive Indexes
+        index = [dict(proposal=y, user=user.id, poll=poll.id,
+                      priority=x, is_positive=True
+                      ) for x, y in enumerate(data.getlist('positive', []))]
+
+        # Negative Indexes
+        index += [dict(proposal=y, user=user.id, poll=poll.id,
+                       priority=x, is_positive=False
+                       ) for x, y in enumerate(data.getlist('negative', []))]
+
+        index = adapter.index_create_serializer(data=index, many=True)
+
+        if index.is_valid():
+            adapter.index.objects.filter(user=user, proposal__poll=poll).delete()
+            index.save()
+            return Response(status=status.HTTP_201_CREATED)
+
+        else:
+            return Response(index.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @decorators.action(detail=False, methods=['post'], url_path="get_user_delegator")
     def get_user_delegator(self, request, *args, **kwargs):  # TODO Adjust this to work with delegate system
         data = request.data
@@ -879,29 +907,6 @@ class GroupPollViewSet(viewsets.ViewSet):
             return NotFound(result)
         result = failed_response(data=None, message="User has no delegator attached to group")
         return NotFound(result)
-
-    def __update_proposal_indexes(self, user: User, poll: Poll, positive_proposal_index: list,
-                                  negative_proposal_index: list):
-        positive_proposal_index_check = PollProposal.objects.filter(id__in=positive_proposal_index, poll=poll)
-        negative_proposal_index_check = PollProposal.objects.filter(id__in=negative_proposal_index, poll=poll)
-        if len(positive_proposal_index_check) == len(positive_proposal_index) \
-                and len(negative_proposal_index_check) == len(negative_proposal_index)\
-                and not set(positive_proposal_index) & set(negative_proposal_index):
-
-            PollProposalIndex.objects.filter(counter_proposal__poll=poll, user=user).delete()
-            PollProposalIndex.objects.bulk_create(
-                [PollProposalIndex(counter_proposal_id=c_id,
-                                   user=user,
-                                   priority=i,
-                                   is_positive=True) for i, c_id in enumerate(positive_proposal_index)] +
-                [PollProposalIndex(counter_proposal_id=c_id,
-                                   user=user,
-                                   priority=i,
-                                   is_positive=False) for i, c_id in enumerate(negative_proposal_index)]
-            )
-            return
-
-        raise Exception("Input counter_proposals have been altered or deleted")
 
     @decorators.action(detail=False, methods=['post'], url_path="delete_counter_proposal")
     def delete_counter_proposal(self, request, *args, **kwargs):

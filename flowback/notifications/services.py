@@ -12,20 +12,29 @@ from flowback.notifications.selectors import notification_subscriber_list
 
 # Get relevant data of a notification target
 class NotificationTypeValidator:
-    def __init__(self, *, notification_type: str, notification_target: int):
-        if notification_type == 'group':
+    def __init__(self, *, notification_type, notification_target: int):
+        if notification_type in ['group', Group, Notification.Type.GROUP] \
+                or isinstance(notification_type, Group):
+            self.name = 'group'
+            self.choice = Notification.Type.GROUP
             self.type = Group
             self.target = Group.objects.get(id=notification_target)
             self.group = self.target
             self.link = f'groupdetails/{self.group.id}'
 
-        if notification_type == 'poll':
+        elif notification_type in ['poll', Poll, Notification.Type.POLL] \
+                or isinstance(notification_type, Poll):
+            self.name = 'poll'
+            self.choice = Notification.Type.POLL
             self.type = Poll
             self.target = Poll.objects.get(id=notification_target)
             self.group = self.target.group
             self.link = f'groupdetails/{self.group.id}/pollDetails/{notification_target}'
 
-        if notification_type == 'proposal':
+        elif notification_type in ['poll_proposal', PollProposal, Notification.Type.PROPOSAL] \
+                or isinstance(notification_type, PollProposal):
+            self.name = 'poll_proposal'
+            self.choice = Notification.Type.PROPOSAL
             self.type = PollProposal
             self.target = PollProposal.objects.get(id=notification_target)
             self.group = self.target.poll.group
@@ -53,19 +62,20 @@ def notify_subscribers(notification: Notification):
 # Creates a notification & notifies all users related to the topic
 def notification_create(
         *,
-        notification_type: str,
+        notification_type,
         notification_target: int,
-        link_type: str,
+        link_type,
         link_target: int,
         message: str,
         date: datetime.datetime
 ) -> Notification:
-    NotificationTypeValidator(notification_type=notification_type, notification_target=notification_target)
-    NotificationTypeValidator(notification_type=link_type, notification_target=link_target)
+    notification = NotificationTypeValidator(notification_type=notification_type,
+                                             notification_target=notification_target)
+    link = NotificationTypeValidator(notification_type=link_type, notification_target=link_target)
     notification = Notification(
-        type=notification_type,
+        type=notification.choice,
         target=notification_target,
-        link_type=link_type,
+        link_type=link.choice,
         link_target=link_target,
         message=message,
         date=date
@@ -102,21 +112,27 @@ def notification_update(
 # Deletes a notification
 def notification_delete(
         *,
-        notification_type: str,
+        notification_type,
         notification_target: int,
-        link_type: str,
+        link_type,
         link_target: int
 ):
-    Notification.objects.filter(
-        type=notification_type,
-        target=notification_target,
-        link_type=link_type,
-        link_target=link_target
-    ).delete()
 
-    NotificationSubscribers.objects.get(
-        type=notification_type,
-        target=notification_target
+    notification = NotificationTypeValidator(
+        notification_type=notification_type,
+        notification_target=notification_target
+    )
+
+    link = NotificationTypeValidator(
+        notification_type=link_type,
+        notification_target=link_target
+    )
+
+    Notification.objects.filter(
+        type=notification.choice,
+        target=notification_target,
+        link_type=link.choice,
+        link_target=link_target
     ).delete()
 
 
