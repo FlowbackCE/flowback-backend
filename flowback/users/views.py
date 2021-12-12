@@ -479,9 +479,16 @@ class UserGroupViewSet(viewsets.ViewSet):
         if group:
             # update all the details of group
             group.title = data.get('title', group.title)
+
             group.description = data.get('description', group.description)
-            group.cover_image = data.get('cover_image', group.cover_image)
-            group.image = data.get('image', group.image)
+
+            image = data.get('image', '')
+            cover = data.get('cover', '')
+            image = image if image != '' else group.image
+            cover = cover if cover != '' else group.cover_image
+
+            group.cover_image = cover
+            group.image = image
             if data.get('public'):
                 if data.get('public') == 'true':
                     group.public = True
