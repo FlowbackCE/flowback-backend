@@ -167,7 +167,7 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'Asia/Kolkata'
+TIME_ZONE = 'Europe/Stockholm'
 
 USE_I18N = True
 
