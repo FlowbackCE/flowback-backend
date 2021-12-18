@@ -30,12 +30,14 @@ from django.utils.translation import gettext_lazy as _
 # Create your models here.
 from taggit.managers import TaggableManager
 
+from tree_queries.models import TreeNode
+
 from flowback.base.models import TimeStampedUUIDModel
 from flowback.users.models import Group, User
 
 
 class Post(TimeStampedUUIDModel):
-    group = models.ForeignKey(Group,on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
     description = models.TextField(_('Description'), blank=True)
     image = models.ImageField(null=True, blank=True)
     author = models.ForeignKey(settings.AUTH_USER_MODEL,
@@ -93,8 +95,10 @@ class Poll(TimeStampedUUIDModel):
         default=Type.POLL
     )
 
+    top_proposal = models.ForeignKey('polls.PollProposal', related_name="poll_top_proposal",
+                                     on_delete=models.DO_NOTHING, null=True, blank=True)
     success = models.BooleanField(default=False)
-    files = models.ManyToManyField(PollDocs, related_name='poll_documents')
+    files = models.ManyToManyField(PollDocs, related_name='poll_documents', blank=True, null=True)
     accepted = models.BooleanField(default=True)
     accepted_at = models.DateTimeField(_('Request accepted time'), null=True, blank=True)
     votes_counted = models.BooleanField(default=False)  # Determines if the counter proposals have had their votes counted
@@ -141,7 +145,7 @@ class PollBookmark(TimeStampedUUIDModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
-class PollCounterProposal(TimeStampedUUIDModel):
+class PollProposal(TimeStampedUUIDModel):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
@@ -163,21 +167,79 @@ class PollCounterProposal(TimeStampedUUIDModel):
         unique_together = ('poll', 'user')
 
 
-class PollCounterProposalsIndex(TimeStampedUUIDModel):
-    counter_proposal = models.ForeignKey(PollCounterProposal, on_delete=models.CASCADE)
+class PollProposalEvent(TimeStampedUUIDModel):
+    poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+
+    class Type(models.TextChoices):
+        DEFAULT = 'DEFAULT', _('Default')
+        DROP = 'DROP', _('Drop')
+
+    type = models.CharField(
+        max_length=30,
+        choices=Type.choices,
+        default=Type.DEFAULT
+    )
+
+    proposal = models.TextField(null=True, blank=True)
+    date = models.DateTimeField()
+    final_score = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        unique_together = (('poll', 'user'), ('poll', 'date'))
+
+
+class PollProposalIndex(TimeStampedUUIDModel):
+    proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    priority = models.IntegerField()
+    is_positive = models.BooleanField()  # Whether the user votes for or against the proposal
+
+    class Meta:
+        unique_together = ('proposal', 'user')
+
+
+class PollProposalEventIndex(TimeStampedUUIDModel):
+    proposal = models.ForeignKey(PollProposalEvent, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     priority = models.IntegerField()
     is_positive = models.BooleanField()  # Whether the user votes for or against the counter-proposal
 
     class Meta:
-        unique_together = ('counter_proposal', 'user', 'priority', 'is_positive')
+        unique_together = ('proposal', 'user', 'priority', 'is_positive')
 
 
-class PollCounterProposalComments(TimeStampedUUIDModel):
+class PollProposalComments(TimeStampedUUIDModel):
     comment = models.TextField(_('Counter Proposal Comments'))
-    counter_proposal = models.ForeignKey(PollCounterProposal, on_delete=models.CASCADE)
+    counter_proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
     reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     edited = models.BooleanField(default=False)
-    likes = models.ManyToManyField(User, related_name='counter_proposal_likes_by')
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='counter_proposal_comment_created_by')
-    modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='counter_proposal_comment_modified_by')
+    likes = models.ManyToManyField(User, related_name='proposal_comment_likes_by')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_comment_created_by')
+    modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_comment_modified_by')
+
+
+class PollProposalThreads(TreeNode, TimeStampedUUIDModel):
+    proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
+    comment = models.TextField()
+    score = models.ManyToManyField(User, related_name='proposal_thread_score')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_thread_created_by')
+    modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_thread_modified_by')
+
+
+class PollProposalEventComments(TimeStampedUUIDModel):
+    comment = models.TextField(_('Counter Proposal Comments'))
+    counter_proposal = models.ForeignKey(PollProposalEvent, on_delete=models.CASCADE)
+    reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    edited = models.BooleanField(default=False)
+    likes = models.ManyToManyField(User, related_name='proposal_event_comment_likes_by')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_event_comment_created_by')
+    modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_event_comment_modified_by')
+
+
+class PollProposalEventThreads(TreeNode, TimeStampedUUIDModel):
+    proposal = models.ForeignKey(PollProposalEvent, on_delete=models.CASCADE)
+    comment = models.TextField()
+    score = models.ManyToManyField(User, related_name='proposal_event_thread_score')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_event_thread_created_by')
+    modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_event_thread_modified_by')

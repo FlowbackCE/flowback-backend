@@ -22,8 +22,9 @@ import datetime
 from rest_framework import serializers
 
 from flowback.users.models import User, Group, OnboardUser, GroupRequest
-from flowback.polls.models import Poll, PollDocs, PollVotes, PollComments, PollBookmark, PollCounterProposal,\
-    PollCounterProposalComments, PollUserDelegate
+from flowback.polls.models import Poll, PollDocs, PollVotes, PollComments, PollBookmark, PollProposal,\
+    PollProposalIndex, PollProposalEventIndex, \
+    PollProposalEvent, PollProposalComments, PollProposalThreads, PollProposalEventComments, PollProposalEventThreads, PollUserDelegate
 from flowback.users.serializer import SimpleUserSerializer, PollCommentUserSerializer
 
 
@@ -329,19 +330,100 @@ class GetPollCommentsSerializer(serializers.ModelSerializer):
         return False
 
 
-class CreatePollCounterProposalSerializer(serializers.ModelSerializer):
+# Poll Proposals
+class PollProposalCreateSerializer(serializers.ModelSerializer):
+
     class Meta:
-        model = PollCounterProposal
+        model = PollProposal
         fields = ('poll', 'proposal', 'file')
 
 
-class GetPollCounterProposalCommentsSerializer(serializers.ModelSerializer):
+class PollProposalEventCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = PollProposalEvent
+        fields = ('poll', 'proposal', 'date')
+
+    def validate_poll(self, obj):
+        if not obj.type == Poll.Type.EVENT:
+            raise serializers.ValidationError(detail='Poll is not an Event.')
+
+        return obj
+
+    def validate_date(self, obj):
+        if not (obj.minute % 5 == 0 and obj.second == 0 and obj.microsecond == 0):
+            raise serializers.ValidationError(detail='Date needs to be in 5 minute increments.')
+
+        return obj
+
+
+class PollProposalGetSerializer(serializers.ModelSerializer):
+    user = SimpleUserSerializer()
+    comments_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PollProposal
+        fields = ('id', 'poll', 'proposal', 'user', 'file', 'final_score', 'created_at', 'comments_details')
+
+    def get_comments_details(self, obj):
+        proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by(
+            '-created_at')
+        serializer = PollProposalCommentsGetSerializer(proposal_comments, many=True,
+                                                       context={'request': self.context.get("request")})
+        data = dict()
+        data['comments'] = serializer.data
+        data['total_comments'] = len(proposal_comments)
+        return data
+
+
+class PollProposalEventGetSerializer(serializers.ModelSerializer):
+    user = SimpleUserSerializer()
+    comments_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PollProposalEvent
+        fields = ('id', 'poll', 'proposal', 'date', 'user', 'final_score', 'created_at', 'comments_details')
+
+    # TODO Add Comment Support For Events
+    def get_comments_details(self, obj):
+        proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by(
+            '-created_at')
+        serializer = PollProposalCommentsGetSerializer(proposal_comments, many=True,
+                                                       context={'request': self.context.get("request")})
+        data = dict()
+        data['comments'] = serializer.data
+        data['total_comments'] = len(proposal_comments)
+        return data
+
+# TODO Check if user is in proposal group
+class PollProposalIndexCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = PollProposalIndex
+        fields = ('proposal', 'user', 'priority', 'is_positive')
+
+    def get_unique_together_validators(self):
+        return []
+
+
+class PollProposalEventIndexCreateSerializer(serializers.ModelSerializer):
+    poll = GroupPollDetailsSerializer(read_only=True)
+
+    class Meta:
+        model = PollProposalEventIndex
+        fields = ('proposal', 'user', 'priority', 'is_positive')
+
+    def get_unique_together_validators(self):
+        return []
+
+
+class PollProposalCommentsGetSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
     created_by = PollCommentUserSerializer()
     liked = serializers.SerializerMethodField()
 
     class Meta:
-        model = PollCounterProposalComments
+        model = PollProposalComments
         fields = ('id', 'comment', 'counter_proposal', 'reply_to', 'edited', 'likes', 'created_by', 'modified_by', 'created_at',
                   'modified_at', 'likes_count', 'liked')
 
@@ -355,23 +437,68 @@ class GetPollCounterProposalCommentsSerializer(serializers.ModelSerializer):
         return False
 
 
+class PollProposalEventCommentsGetSerializer(serializers.ModelSerializer):
+    likes_count = serializers.SerializerMethodField()
+    created_by = PollCommentUserSerializer()
+    liked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PollProposalEventComments
+        fields = ('id', 'comment', 'counter_proposal', 'reply_to', 'edited', 'likes', 'created_by', 'modified_by', 'created_at',
+                  'modified_at', 'likes_count', 'liked')
+
+    def get_likes_count(self, obj):
+        return len(obj.likes.all())
+
+    def get_liked(self, obj):
+        request = self.context.get("request")
+        if request.user in obj.likes.all():
+            return True
+        return False
+
+
+
 class GetPollCounterProposalDetailsSerializer(serializers.ModelSerializer):
     user = SimpleUserSerializer()
     comments_details = serializers.SerializerMethodField()
 
     class Meta:
-        model = PollCounterProposal
+        model = PollProposal
         fields = ('id', 'poll', 'proposal', 'user', 'file', 'final_score', 'created_at', 'comments_details')
 
     def get_comments_details(self, obj):
-        counter_proposal_comments = PollCounterProposalComments.objects.filter(counter_proposal=obj).order_by('-created_at')
-        serializer = GetPollCounterProposalCommentsSerializer(counter_proposal_comments, many=True, context={'request': self.context.get("request")})
+        counter_proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by('-created_at')
+        serializer = PollProposalCommentsGetSerializer(counter_proposal_comments, many=True, context={'request': self.context.get("request")})
         data = dict()
         data['comments'] = serializer.data
         data['total_comments'] = len(counter_proposal_comments)
         return data
 
+
+class GetPollCounterProposalEventDetailsSerializer(serializers.ModelSerializer):
+    user = SimpleUserSerializer()
+    comments_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PollProposalEvent
+        fields = ('id', 'poll', 'proposal', 'date', 'user', 'file', 'final_score', 'created_at', 'comments_details')
+
+    def get_comments_details(self, obj):
+        counter_proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by('-created_at')
+        serializer = PollProposalCommentsGetSerializer(counter_proposal_comments, many=True, context={'request': self.context.get("request")})
+        data = dict()
+        data['comments'] = serializer.data
+        data['total_comments'] = len(counter_proposal_comments)
+        return data
+
+
 class CreateCounterProposalCommentSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PollCounterProposalComments
+        model = PollProposalComments
+        fields = ('comment', 'counter_proposal', 'reply_to')
+
+
+class CreateCounterProposalEventCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PollProposalEventComments
         fields = ('comment', 'counter_proposal', 'reply_to')

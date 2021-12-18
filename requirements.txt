@@ -33,6 +33,8 @@ django-phonenumber-field==1.1.0
 django-rest-passwordreset==1.1.0
 django-sendgrid-v5==0.8.1
 django-taggit==1.3.0
+django-filter==21.1
+django-tree-queries==0.6.0
 djangorestframework==3.11.0
 drf-yasg==1.20.0
 entrypoints==0.3
