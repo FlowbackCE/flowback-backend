@@ -386,7 +386,7 @@ class PollProposalEventGetSerializer(serializers.ModelSerializer):
 
     # TODO Add Comment Support For Events
     def get_comments_details(self, obj):
-        proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by(
+        proposal_comments = PollProposalEventComments.objects.filter(counter_proposal=obj).order_by(
             '-created_at')
         serializer = PollProposalCommentsGetSerializer(proposal_comments, many=True,
                                                        context={'request': self.context.get("request")})
@@ -407,7 +407,6 @@ class PollProposalIndexCreateSerializer(serializers.ModelSerializer):
 
 
 class PollProposalEventIndexCreateSerializer(serializers.ModelSerializer):
-    poll = GroupPollDetailsSerializer(read_only=True)
 
     class Meta:
         model = PollProposalEventIndex
