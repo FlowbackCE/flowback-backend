@@ -87,7 +87,6 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedUUIDModel):
     country = models.CharField(max_length=100, null=True, blank=True)
     city = models.CharField(max_length=100, null=True, blank=True)
     website = models.CharField(max_length=100, null=True, blank=True)
-    accepted_terms_use = models.BooleanField(default=False)
     accepted_terms_condition = models.BooleanField(default=False)
     is_staff = models.BooleanField(
         _('staff status'),

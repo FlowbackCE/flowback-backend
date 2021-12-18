@@ -45,12 +45,11 @@ from flowback.users.models import User, Group, OnboardUser, GroupRequest, GroupD
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    accepted_terms_use = serializers.BooleanField()
     accepted_terms_condition = serializers.BooleanField()
 
     class Meta:
         model = User
-        fields = ('email', 'password', 'accepted_terms_use', 'accepted_terms_condition')
+        fields = ('email', 'password', 'accepted_terms_condition')
 
     def validate_accepted_terms_use(self, value):
         if value:

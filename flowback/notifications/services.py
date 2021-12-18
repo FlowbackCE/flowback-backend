@@ -2,10 +2,12 @@
 # https://github.com/HackSoftware/Django-Styleguide#services
 import datetime
 
+from django.core.mail import send_mail
+from django.core.exceptions import ValidationError
+
 from flowback.users.models import User, Group
 from flowback.users.services import user_group_permitted
 from flowback.polls.models import Poll, PollProposal
-from django.core.exceptions import ValidationError
 from flowback.notifications.models import Notification, UserNotifications, NotificationSubscribers
 from flowback.notifications.selectors import notification_subscriber_list
 
@@ -56,6 +58,15 @@ def notify_subscribers(notification: Notification):
             notification=notification,
             read=False
         ) for user in subscribers.data]
+    )
+
+
+def mail_subscribers():
+    send_mail(
+        subject='test',
+        message='Flowback Verification Code',
+        from_email=None,
+        recipient_list=[]
     )
 
 

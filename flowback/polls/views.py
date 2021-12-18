@@ -40,12 +40,13 @@ from django.shortcuts import get_object_or_404, get_list_or_404
 
 from flowback.response import Created, BadRequest, NotFound
 from flowback.response import Ok
+from flowback.notifications.models import Notification
 from flowback.notifications.services import notification_create, notification_update, notification_delete
 from flowback.response_handler import success_response, failed_response
 from flowback.users.models import Group, OnboardUser
 from flowback.users.models import User
 from flowback.polls.models import Poll, PollDocs, PollVotes, PollComments, PollBookmark,\
-    PollProposal, PollProposalEvent, PollCounterProposalComments, PollProposalIndex,\
+    PollProposal, PollProposalEvent, PollProposalComments, PollProposalIndex,\
     PollProposalEventIndex, PollUserDelegate
 from flowback.users.serializer import UserGroupCreateSerializer, MyGroupSerializer, AddParticipantSerializer, \
     OnboardUserFirstSerializer, OnboardUserSecondSerializer, GroupParticipantSerializer, CreateGroupRequestSerializer, \
@@ -743,7 +744,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         # Counting Proposal Votes
         if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
             counter_proposals = adapter.proposal.objects.filter(poll=poll).all()
-            indexes = adapter.index.objects.filter(counter_proposal__poll=poll)
+            indexes = adapter.index.objects.filter(proposal__poll=poll)
             counter = {key.id: 0 for key in counter_proposals}
 
             # Reset all counter proposals final score
@@ -802,12 +803,13 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         # Validation
         if serializer and serializer.is_valid():
+            print(serializer.validated_data)
             proposal = serializer.save(user=user)
 
             notification_create(
                 notification_type='poll',
                 notification_target=poll.id,
-                link_type='proposal',
+                link_type='poll_proposal',
                 link_target=proposal.id,
                 message=f'New proposal added to "{poll.title}".',
                 date=datetime.datetime.now()
@@ -858,27 +860,38 @@ class GroupPollViewSet(viewsets.ViewSet):
         negative_index = [x.proposal for x in sorted([x for x in index if not x.is_positive],
                                                      key=lambda x: x.priority)]
 
-        data['positive_proposals'] = adapter.proposal_get_serializer(positive_index, many=True).data
-        data['negative_proposals'] = adapter.proposal_get_serializer(negative_index, many=True).data
+        data['positive'] = adapter.proposal_get_serializer(positive_index, many=True).data
+        data['negative'] = adapter.proposal_get_serializer(negative_index, many=True).data
+
+        # TODO Bodge
+        data['proposal_indexes'] = {}
+        for val, c_id in enumerate(data['positive']):
+            data['proposal_indexes'][str(c_id['id'])] = len(data['positive']) - val
+        for val, c_id in enumerate(data['negative']):
+            data['proposal_indexes'][str(c_id['id'])] = -len(data['negative']) + val
+
         return Response(data, status=status.HTTP_200_OK)
 
     # TODO Improve safety, check if user in poll group
-    @decorators.action(detail=True, methods=['post', 'update'], url_path='update_proposal_index')
+    @decorators.action(detail=True, methods=['post', 'update'], url_path='update_index_proposals')
     def update_index_proposals(self, request, pk):
         user = request.user
         data = request.data
         poll = get_object_or_404(Poll, pk=pk)
         adapter = PollAdapter(poll)
 
+        # TODO Bodge
+        data['positive'].reverse()
+
         # Positive Indexes
         index = [dict(proposal=y, user=user.id, poll=poll.id,
                       priority=x, is_positive=True
-                      ) for x, y in enumerate(data.getlist('positive', []))]
+                      ) for x, y in enumerate(data.get('positive', []))]
 
         # Negative Indexes
         index += [dict(proposal=y, user=user.id, poll=poll.id,
                        priority=x, is_positive=False
-                       ) for x, y in enumerate(data.getlist('negative', []))]
+                       ) for x, y in enumerate(data.get('negative', []))]
 
         index = adapter.index_create_serializer(data=index, many=True)
 
@@ -941,15 +954,16 @@ class GroupPollViewSet(viewsets.ViewSet):
             counter_proposal = counter_proposal.filter(Q(user=user),  Q(poll__group__owners__in=[user]) | Q(poll__group__admins__in=[user]) | Q(poll__group__moderators__in=[user]) |
                                                        Q(poll__group__members__in=[user]))
             if counter_proposal:
+                adapter = PollAdapter(counter_proposal.poll)
                 # serializer for create counter proposal comment
-                serializer = CreateCounterProposalCommentSerializer(data=data)
+                serializer = adapter.comment_create_serializer(data=data)
                 if serializer.is_valid():
-                    comment = PollCounterProposalComments.objects.create(comment=serializer.validated_data.get('comment'),
-                                                                         counter_proposal=serializer.validated_data.get('counter_proposal'),
-                                                                         reply_to=serializer.validated_data.get('reply_to'),
-                                                                         created_by=user, modified_by=user)
+                    comment = adapter.comments.objects.create(comment=serializer.validated_data.get('comment'),
+                                                              counter_proposal=serializer.validated_data.get('counter_proposal'),
+                                                              reply_to=serializer.validated_data.get('reply_to'),
+                                                              created_by=user, modified_by=user)
                     comment.save()
-                    serializer = GetPollCounterProposalDetailsSerializer(comment.proposal, context={'request': self.request})
+                    serializer = adapter.proposal_detail_serializer(comment.proposal, context={'request': self.request})
                     result = success_response(data=serializer.data, message="Create counter proposal comment successfully.")
                     return Created(result)
                 result = failed_response(data=serializer.errors, message="")
@@ -964,7 +978,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         user = request.user
         data = request.data
         # get counter proposal comment of poll id
-        counter_proposal_comment = PollCounterProposalComments.objects.filter(id=data.get('comment_id')).first()
+        counter_proposal_comment = PollProposalComments.objects.filter(id=data.get('comment_id')).first()
         if counter_proposal_comment:
             group = counter_proposal_comment.proposal.poll.group
             # check the user permission and edit the comment
@@ -988,7 +1002,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         data = request.data
         user = request.user
         # get counter proposal comment of poll by id
-        comment = PollCounterProposalComments.objects.filter(id=data.get('comment')).first()
+        comment = PollProposalComments.objects.filter(id=data.get('comment')).first()
         if comment:
             counter_proposal = comment.proposal
             group = counter_proposal.poll.group
@@ -1011,7 +1025,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         data = request.data
         like = data.get('like', None)
         # get counter proposal comment of poll by id
-        counter_proposal_comment = PollCounterProposalComments.objects.filter(id=data.get('counter_proposal_comment')).first()
+        counter_proposal_comment = PollProposalComments.objects.filter(id=data.get('counter_proposal_comment')).first()
         if counter_proposal_comment:
             # if already liked then remove the like otherwise like that comment
             if like:
