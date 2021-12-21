@@ -105,10 +105,11 @@ class SimpleUserSerializer(serializers.ModelSerializer):
         return user
 
     def get_city(self, obj):
-        city = City.objects.filter(id=obj.city).first()
-        if city:
-            serializer = GetCityDetailsSerializer(city)
-            return serializer.data
+        if obj.city and obj.city != 'undefined':
+            city = City.objects.filter(id=obj.city).first()
+            if city:
+                serializer = GetCityDetailsSerializer(city)
+                return serializer.data
         return {}
 
     def get_country(self, obj):
@@ -196,7 +197,7 @@ class MyGroupSerializer(serializers.ModelSerializer):
                   'room_name', 'created_at')
 
     def get_city(self, obj):
-        if obj.city:
+        if obj.city and obj.city != 'undefined':
             city = City.objects.filter(id=obj.city).first()
             if city:
                 serializer = GetCityDetailsSerializer(city)
@@ -278,7 +279,7 @@ class GroupDetailsSerializer(serializers.ModelSerializer):
                   'public', 'members_request', 'poll_approval', 'active', 'deleted', 'total_members', 'room_name', 'group_join_status')
 
     def get_city(self, obj):
-        if obj.city:
+        if obj.city and obj.city != 'undefined':
             city = City.objects.filter(id=obj.city).first()
             if city:
                 serializer = GetCityDetailsSerializer(city)
