@@ -58,6 +58,12 @@ class GroupPollCreateSerializer(serializers.ModelSerializer):
         model = Poll
         fields = ('group', 'title', 'description', 'type', 'end_time')
 
+    def validate_end_time(self, obj: datetime.datetime):
+        if obj <= datetime.datetime.now():
+            raise serializers.ValidationError(detail='End time already passed.')
+
+        return obj
+
 
 class GroupPollUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -350,9 +356,9 @@ class PollProposalEventCreateSerializer(serializers.ModelSerializer):
 
         return obj
 
-    def validate_date(self, obj):
-        if not (obj.minute % 5 == 0 and obj.second == 0 and obj.microsecond == 0):
-            raise serializers.ValidationError(detail='Date needs to be in 5 minute increments.')
+    def validate_date(self, obj: datetime.datetime):
+        if obj <= datetime.datetime.now():
+            raise serializers.ValidationError(detail='Date already passed.')
 
         return obj
 
