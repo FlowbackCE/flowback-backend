@@ -413,7 +413,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                            | Q(group__delegators__in=[user]), Q(group__public=False))
             return Q(Q(group__owners__in=[user]) | Q(group__admins__in=[user])
                      | Q(group__moderators__in=[user]) | Q(group__members__in=[user])
-                     | Q(group__delegators__in=[user]), Q(group__public=False))
+                     | Q(group__delegators__in=[user]))
 
         arguments = dict()
         if poll_created_before:
@@ -426,12 +426,11 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         else:
             extra_args = {}  # Custom Arguments
-            include_public = True
+            include_public = False
             if poll_type in Poll.Type.POLL.label:
                 extra_args = dict(type=Poll.Type.POLL)
             if poll_type in Poll.Type.MISSION.label:
                 extra_args = dict(type=Poll.Type.MISSION, success=True)
-                include_public = False
 
             polls = Poll.objects.filter(
                     base_query(include_public),
