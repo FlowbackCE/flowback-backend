@@ -1,22 +1,3 @@
-# FlowBack was created and project lead by Loke Hagberg. The design was
-# made by Lina Forsberg. Emilio Müller helped constructing Flowback.
-# Astroneatech created the code. It was primarily financed by David
-# Madsen. It is a decision making platform.
-# Copyright (C) 2021  Astroneatech AB
-# 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-# 
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see https://www.gnu.org/licenses/.
-
 import datetime
 from itertools import groupby
 import json
@@ -421,8 +402,12 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         # Fetch Polls
         if user.id is None:
-            arguments['group__public'] = True
-            polls = Poll.objects.filter(**arguments).order_by('-created_at')
+            # arguments['group__public'] = True
+            polls = Poll.objects.filter(
+                **arguments,
+                type=Poll.Type.MISSION,
+                success=True
+            ).order_by('-created_at')
 
         else:
             extra_args = {}  # Custom Arguments
@@ -764,10 +749,10 @@ class GroupPollViewSet(viewsets.ViewSet):
                 negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
 
                 for sub, index in enumerate(positive):
-                    counter[index.counter_proposal_id] += (len(counter_proposals) - sub) * multiplier
+                    counter[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
 
                 for sub, index in enumerate(negative):
-                    counter[index.counter_proposal_id] += (sub - len(counter_proposals)) * multiplier
+                    counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
 
             # Insert counter to proposals
             for key, counter_proposal in enumerate(counter_proposals):
@@ -779,7 +764,7 @@ class GroupPollViewSet(viewsets.ViewSet):
             # Poll Type Checks
             if poll.type == Poll.Type.MISSION:
                 top = counter_proposals.order_by('-final_score').first()
-                success = top and top.type != adapter.proposal.Type.DROP and top.final_score
+                success = bool(top and top.type != adapter.proposal.Type.DROP and top.final_score)
                 Poll.objects.filter(id=poll.id).update(success=success)
 
             Poll.objects.filter(id=poll.id).update(votes_counted=True)
