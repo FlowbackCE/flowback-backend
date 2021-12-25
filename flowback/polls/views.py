@@ -421,8 +421,12 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         # Fetch Polls
         if user.id is None:
-            arguments['group__public'] = True
-            polls = Poll.objects.filter(**arguments).order_by('-created_at')
+            # arguments['group__public'] = True
+            polls = Poll.objects.filter(
+                **arguments,
+                type=Poll.Type.MISSION,
+                success=True
+            ).order_by('-created_at')
 
         else:
             extra_args = {}  # Custom Arguments
@@ -764,10 +768,10 @@ class GroupPollViewSet(viewsets.ViewSet):
                 negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
 
                 for sub, index in enumerate(positive):
-                    counter[index.counter_proposal_id] += (len(counter_proposals) - sub) * multiplier
+                    counter[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
 
                 for sub, index in enumerate(negative):
-                    counter[index.counter_proposal_id] += (sub - len(counter_proposals)) * multiplier
+                    counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
 
             # Insert counter to proposals
             for key, counter_proposal in enumerate(counter_proposals):
@@ -779,7 +783,7 @@ class GroupPollViewSet(viewsets.ViewSet):
             # Poll Type Checks
             if poll.type == Poll.Type.MISSION:
                 top = counter_proposals.order_by('-final_score').first()
-                success = top and top.type != adapter.proposal.Type.DROP and top.final_score
+                success = bool(top and top.type != adapter.proposal.Type.DROP and top.final_score)
                 Poll.objects.filter(id=poll.id).update(success=success)
 
             Poll.objects.filter(id=poll.id).update(votes_counted=True)
