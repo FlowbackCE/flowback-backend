@@ -23,6 +23,7 @@ BASE_DIR = os.path.dirname((os.path.dirname(__file__)))
 print(BASE_DIR)
 env = environ.Env(DEBUG=(bool, False))
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DUMMY = os.getenv('DUMMY', 'True') == 'True'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -135,8 +136,8 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator", },
 ]
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if not DEBUG else \
-                 "django.core.mail.backends.dummy.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if not DUMMY \
+    else "django.core.mail.backends.dummy.EmailBackend"
 EMAIL_HOST = env('EMAIL_HOST', default='<smtp.yourserver.com>')
 EMAIL_PORT = env('EMAIL_PORT', default='<your-server-port>')
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='<your-email>')
