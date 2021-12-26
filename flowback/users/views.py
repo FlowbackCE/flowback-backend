@@ -98,6 +98,7 @@ class UserViewSet(viewsets.ViewSet):
         send_mail('Flowback Reset Password', 'Please Enter This Code: %s' % (code),
                   EMAIL_HOST_USER,
                   [str(serializer.data.get('email'))])
+        print(code)
 
         return Response(status=status.HTTP_201_CREATED)
 
@@ -107,10 +108,10 @@ class UserViewSet(viewsets.ViewSet):
         serializer = ResetPasswordVerifySerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.data.get('email')
-        code = serializer.data.get('verification_code')
-        password = serializer.data.get('password')
-        verification = get_object_or_404(PasswordReset, email=email, verification_code=code)
+        email = serializer.validated_data.get('email')
+        code = serializer.validated_data.get('verification_code')
+        password = serializer.validated_data.get('password')
+        verification = get_object_or_404(PasswordReset, user__email=email, verification_code=code)
 
         verification.user.set_password(password)
         verification.user.save()
@@ -198,7 +199,7 @@ class CurrentUserViewSet(viewsets.GenericViewSet):
         instance.bio = request.data.get('bio', instance.bio)
         instance.image = request.data.get('image', instance.image)
         instance.cover_image = request.data.get('cover_image', instance.cover_image)
-        instance.phone_number = request.data.get('phone_number', instance.phone_number)
+        # instance.phone_number = request.data.get('phone_number', instance.phone_number)
         instance.website = request.data.get('website', instance.website)
         instance.country = request.data.get('country', instance.country)
         instance.city = request.data.get('city', instance.city)
