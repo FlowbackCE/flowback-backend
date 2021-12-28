@@ -6,7 +6,7 @@ from django.core.mail import send_mail
 from django.core.exceptions import ValidationError
 
 from flowback.users.models import User, Group
-from flowback.users.services import user_group_permitted
+from flowback.users.services import group_user_permitted
 from flowback.polls.models import Poll, PollProposal
 from flowback.notifications.models import Notification, UserNotifications, NotificationSubscribers
 from flowback.notifications.selectors import notification_subscriber_list
@@ -167,7 +167,7 @@ def user_notification_subscribe(*, notification_type: str, notification_target: 
         raise ValidationError(f'User is already subscribed.')
 
     validator = NotificationTypeValidator(notification_type=notification_type, notification_target=notification_target)
-    user_group_permitted(user, group_id=validator.group.id)
+    group_user_permitted(user=user, group=validator.group, permission='guest')
 
     NotificationSubscribers.objects.create(
         user=user,
