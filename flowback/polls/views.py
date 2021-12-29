@@ -91,12 +91,12 @@ class GroupPollViewSet(viewsets.ViewSet):
 
                 poll.save()
 
-                if poll.type == Poll.Type.MISSION:
-                    PollProposal.objects.create(
-                        poll=poll,
-                        type=PollProposal.Type.DROP,
-                        proposal="Drop this mission"
-                    )
+                # if poll.type == Poll.Type.MISSION:
+                #    PollProposal.objects.create(
+                #        poll=poll,
+                #        type=PollProposal.Type.DROP,
+                #        proposal="Drop this mission"
+                #    )
 
                 if poll.accepted:
                     notification_create(
