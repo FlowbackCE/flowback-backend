@@ -399,6 +399,20 @@ class UserGroupViewSet(viewsets.ViewSet):
         return BadRequest(result)
 
 
+    @decorators.action(detail=False, methods=['post', 'update'], url_path="group_member_update")
+    def group_member_update(self, request):
+        class InputSerializer(serializers.ModelSerializer):
+            user = serializers.IntegerField
+            group = serializers.IntegerField
+            allow_vote = serializers.BooleanField
+
+        user = request.user
+        data = request.data
+
+        serializer = InputSerializer(data=data)
+        serializer = serializer.is_valid(raise_exception=True)
+
+
     @decorators.action(detail=False, methods=['get'], url_path="my_groups")
     def my_groups(self, request, *args, **kwargs):
         user = request.user
