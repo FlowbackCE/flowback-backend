@@ -163,6 +163,15 @@ class Group(TimeStampedUUIDModel):
     deleted = models.BooleanField(default=False)
 
 
+class GroupMembers(TimeStampedUUIDModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    allow_vote = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = 'user', 'group'
+
+
 class GroupRequest(TimeStampedUUIDModel):
     REQUESTED = 'requested'
     ACCEPTED = 'accepted'

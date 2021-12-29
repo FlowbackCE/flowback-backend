@@ -187,7 +187,7 @@ class MyGroupSerializer(serializers.ModelSerializer):
 
     def get_country(self, obj):
         # country = Country.objects.filter(id=obj.country).first()
-        if obj.country:
+        if obj.country and obj.country != 'undefined':
             country = Country.objects.filter(id=obj.country).first()
             if country:
                 serializer = GetCountryDetailsSerializer(country)

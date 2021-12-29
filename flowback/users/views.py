@@ -7,7 +7,7 @@ from random import randint
 from django.core.mail import send_mail
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from rest_framework import decorators, viewsets, status
+from rest_framework import decorators, viewsets, status, serializers
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -20,7 +20,7 @@ from django.db.models.functions import Concat
 from flowback.response import Created, BadRequest
 from flowback.response import Ok
 from flowback.response_handler import success_response, failed_response
-from flowback.users.models import Group, OnboardUser, GroupDocs, GroupRequest, FriendChatMessage, GroupChatMessage
+from flowback.users.models import Group, GroupMembers, OnboardUser, GroupDocs, GroupRequest, FriendChatMessage, GroupChatMessage
 from flowback.users.models import User, PasswordReset
 from flowback.users.models import Country, State, City
 from flowback.users.models import Friends
