@@ -34,7 +34,7 @@ def group_user_permitted(*, user: User, group: Group, permission: str, raise_exc
         return False
 
 
-def group_member_update(user: User, group: Group, allow_vote: bool):
+def group_member_update(*, user: User, group: Group, allow_vote: bool):
     group_user_permitted(user=user, group=group, permission='admin')
     GroupMembers.objects.update_or_create(
         user=user,

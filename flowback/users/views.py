@@ -34,6 +34,7 @@ from flowback.users.serializer import UserSerializer, SimpleUserSerializer, User
     ResetPasswordSerializer, ResetPasswordVerifySerializer
 from flowback.users.serializer import CreateFriendRequestSerializer, GetAllFriendRequestSerializer, GetAllFriendsRoomSerializer
 from flowback.polls.serializer import SearchPollSerializer
+from flowback.users.services import group_member_update
 from settings.base import EMAIL_HOST_USER, DEBUG
 
 
@@ -412,6 +413,8 @@ class UserGroupViewSet(viewsets.ViewSet):
         serializer = InputSerializer(data=data)
         serializer = serializer.is_valid(raise_exception=True)
 
+        group_member_update(**serializer.validated_data)
+        return Response(status.HTTP_200_OK)
 
     @decorators.action(detail=False, methods=['get'], url_path="my_groups")
     def my_groups(self, request, *args, **kwargs):
