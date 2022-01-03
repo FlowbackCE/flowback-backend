@@ -401,7 +401,7 @@ class UserGroupViewSet(viewsets.ViewSet):
 
     @decorators.action(detail=False, methods=['post', 'update'], url_path="group_member_update")
     def group_member_update(self, request):
-        class InputSerializer(serializers.ModelSerializer):
+        class InputSerializer(serializers.Serializer):
             user = serializers.IntegerField
             group = serializers.IntegerField
             allow_vote = serializers.BooleanField
@@ -413,7 +413,25 @@ class UserGroupViewSet(viewsets.ViewSet):
         serializer = serializer.is_valid(raise_exception=True)
 
         group_member_update(**serializer.validated_data)
-        return Response(status.HTTP_200_OK)
+        return Response()
+
+    @decorators.action(detail=False, methods=['get'], url_path="group_member_get")
+    def group_member_get(self, request, pk):
+        class OutputSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = GroupMembers
+                fields = (
+                    'user',
+                    'allow_vote'
+                )
+
+        user = request.user
+        group = get_object_or_404(Group, id=pk)
+        group_user = get_object_or_404(GroupMembers, user=user, group=group)
+        serializer = OutputSerializer(group_user)
+
+        return Response(data=serializer.data)
+
 
     @decorators.action(detail=False, methods=['get'], url_path="my_groups")
     def my_groups(self, request, *args, **kwargs):
