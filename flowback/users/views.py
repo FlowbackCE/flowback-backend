@@ -34,7 +34,7 @@ from flowback.users.serializer import UserSerializer, SimpleUserSerializer, User
     ResetPasswordSerializer, ResetPasswordVerifySerializer
 from flowback.users.serializer import CreateFriendRequestSerializer, GetAllFriendRequestSerializer, GetAllFriendsRoomSerializer
 from flowback.polls.serializer import SearchPollSerializer
-from flowback.users.services import group_member_update
+from flowback.users.services import group_member_update, group_user_permitted
 from settings.base import EMAIL_HOST_USER, DEBUG
 
 
@@ -425,10 +425,11 @@ class UserGroupViewSet(viewsets.ViewSet):
                     'allow_vote'
                 )
 
-        user = request.user
         group = get_object_or_404(Group, id=pk)
-        group_user = get_list_or_404(GroupMembers, group=group)
-        serializer = OutputSerializer(group_user, many=True)
+
+        group_user_permitted(user=request.user, group=group, permission='member')
+        group_members = GroupMembers.objects.filter(group=group)
+        serializer = OutputSerializer(group_members, many=True)
 
         return Response(data=serializer.data)
 
