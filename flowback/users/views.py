@@ -415,7 +415,7 @@ class UserGroupViewSet(viewsets.ViewSet):
         group_member_update(**serializer.validated_data)
         return Response()
 
-    @decorators.action(detail=False, methods=['get'], url_path="group_member_get")
+    @decorators.action(detail=False, methods=['get'], url_path="group_members_get")
     def group_members_get(self, request, pk):
         class OutputSerializer(serializers.ModelSerializer):
             class Meta:
