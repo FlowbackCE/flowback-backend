@@ -94,10 +94,11 @@ class SimpleUserSerializer(serializers.ModelSerializer):
         return {}
 
     def get_country(self, obj):
-        country = Country.objects.filter(id=obj.country).first()
-        if country:
-            serializer = GetCountryDetailsSerializer(country)
-            return serializer.data
+        if obj.country and obj.country != 'undefined':
+            country = Country.objects.filter(id=obj.country).first()
+            if country:
+                serializer = GetCountryDetailsSerializer(country)
+                return serializer.data
         return {}
 
     def get_friendship_status(self, obj):
@@ -186,7 +187,6 @@ class MyGroupSerializer(serializers.ModelSerializer):
         return {}
 
     def get_country(self, obj):
-        # country = Country.objects.filter(id=obj.country).first()
         if obj.country and obj.country != 'undefined':
             country = Country.objects.filter(id=obj.country).first()
             if country:
@@ -268,8 +268,7 @@ class GroupDetailsSerializer(serializers.ModelSerializer):
         return {}
 
     def get_country(self, obj):
-        # country = Country.objects.filter(id=obj.country).first()
-        if obj.country:
+        if obj.country and obj.country != 'undefined':
             country = Country.objects.filter(id=obj.country).first()
             if country:
                 serializer = GetCountryDetailsSerializer(country)
