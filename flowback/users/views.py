@@ -6,7 +6,7 @@ import datetime
 from random import randint
 from django.core.mail import send_mail
 from django.db.models import Q
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, get_list_or_404
 from rest_framework import decorators, viewsets, status, serializers
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -416,7 +416,7 @@ class UserGroupViewSet(viewsets.ViewSet):
         return Response()
 
     @decorators.action(detail=False, methods=['get'], url_path="group_member_get")
-    def group_member_get(self, request, pk):
+    def group_members_get(self, request, pk):
         class OutputSerializer(serializers.ModelSerializer):
             class Meta:
                 model = GroupMembers
@@ -427,11 +427,10 @@ class UserGroupViewSet(viewsets.ViewSet):
 
         user = request.user
         group = get_object_or_404(Group, id=pk)
-        group_user = get_object_or_404(GroupMembers, user=user, group=group)
-        serializer = OutputSerializer(group_user)
+        group_user = get_list_or_404(GroupMembers, group=group)
+        serializer = OutputSerializer(group_user, many=True)
 
         return Response(data=serializer.data)
-
 
     @decorators.action(detail=False, methods=['get'], url_path="my_groups")
     def my_groups(self, request, *args, **kwargs):
