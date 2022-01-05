@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 
 def group_user_permitted(*, user: User, group: Group, permission: str, raise_exception: bool = True):
     def public(is_public):
-        return Q(group__public=is_public)
+        return Q(public=is_public)
 
     owner = Q(owners__in=[user])
     admin = Q(admins__in=[user])

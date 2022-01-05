@@ -72,7 +72,6 @@ class SimpleUserSerializer(serializers.ModelSerializer):
     country = serializers.SerializerMethodField()
     city = serializers.SerializerMethodField()
     friendship_status = serializers.SerializerMethodField()
-    allow_vote = serializers.SerializerMethodField()
 
     class Meta:
         model = User

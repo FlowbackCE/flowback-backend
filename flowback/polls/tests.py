@@ -21,7 +21,6 @@ class DefaultTestCase(TestCase):
         user_one = dict(
             email='example@example.com',
             password='password123',
-            accepted_terms_use=True,
             accepted_terms_condition=True
         )
         self.user_one = User.objects.create(**user_one)
@@ -127,7 +126,6 @@ class TestBaseAPITestCase(APITestCase):
                 email=mail,
                 username=mail,
                 password=passwd,
-                accepted_terms_use=True,
                 accepted_terms_condition=True
             )
             return User.objects.create(**user)
