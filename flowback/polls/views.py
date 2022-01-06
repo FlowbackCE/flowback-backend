@@ -815,15 +815,15 @@ class GroupPollViewSet(viewsets.ViewSet):
         proposal = adapter.proposal_get_serializer(proposal, many=True)
         return Response(proposal.data, status=status.HTTP_200_OK)
 
-    @decorators.action(detail=True, methods=['get'], url_path="user_proposal")
-    def user_proposal(self, request, pk):
+    @decorators.action(detail=True, methods=['get'], url_path="user_proposals")
+    def user_proposals(self, request, pk):
         user = request.user
         poll = get_object_or_404(Poll, pk=pk)
         adapter = PollAdapter(poll)
         self.__poll_votes_check(poll)
 
-        proposal = get_object_or_404(adapter.proposal, poll=poll, user=user)
-        proposal = adapter.proposal_get_serializer(proposal)
+        proposal = get_list_or_404(adapter.proposal, poll=poll, user=user)
+        proposal = adapter.proposal_get_serializer(proposal, many=True)
         return Response(proposal.data, status=status.HTTP_200_OK)
 
     @decorators.action(detail=True, methods=['get'], url_path="index_proposals")
