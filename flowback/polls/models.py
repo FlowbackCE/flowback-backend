@@ -145,9 +145,6 @@ class PollProposal(TimeStampedUUIDModel):
     final_score = models.IntegerField(null=True, blank=True)
     file = models.FileField(upload_to='groups/polls/proposal/', blank=True, null=True)
 
-    class Meta:
-        unique_together = ('poll', 'user')
-
 
 class PollProposalEvent(TimeStampedUUIDModel):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
