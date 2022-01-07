@@ -25,6 +25,7 @@ from flowback.users.models import User, PasswordReset
 from flowback.users.models import Country, State, City
 from flowback.users.models import Friends
 from flowback.polls.models import Poll
+from flowback.users.selectors import get_group_members
 from flowback.users.serializer import UserGroupCreateSerializer, MyGroupSerializer, AddParticipantSerializer, \
     OnboardUserFirstSerializer, OnboardUserSecondSerializer, GroupParticipantSerializer, CreateGroupRequestSerializer, \
     UpdateGroupRequestSerializer, GetChatMessagesSerializer, GetAllGroupRoomsSerializer, GetGroupChatMessagesSerializer
@@ -425,7 +426,7 @@ class UserGroupViewSet(viewsets.ViewSet):
                 )
 
         group_user_permitted(user=request.user, group=group, permission='member')
-        group_members = GroupMembers.objects.filter(group_id=group)
+        group_members = get_group_members(group=group)
         serializer = OutputSerializer(group_members, many=True)
 
         return Response(data=serializer.data)
