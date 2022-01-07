@@ -279,6 +279,7 @@ class UserGroupViewSet(viewsets.ViewSet):
     @decorators.action(detail=False, methods=['post'], url_path="create_group")
     def create_group(self, request, *args, **kwargs):
         data = request.data
+        user = request.user
         serializer = self.serializer_class(data=data)
         if serializer.is_valid(raise_exception=False):
             # create or get the group
@@ -303,6 +304,7 @@ class UserGroupViewSet(viewsets.ViewSet):
                 for tag in tags:
                     group.tag.add(tag)
             group.save()
+            group_member_update(target=user.id, group=group.id, allow_vote=True)
 
             # create room name for group chat
             letters = string.ascii_letters
@@ -626,7 +628,7 @@ class UserGroupViewSet(viewsets.ViewSet):
                 serializer = CreateGroupRequestSerializer(data=data)
                 if serializer.is_valid(raise_exception=False):
                     serializer.save()
-                    group_member_update(user=user, group=group)
+                    group_member_update(target=user.id, group=group.id)
                     result = success_response(data=None, message="")
                     return Created(result)
                 result = failed_response(data=serializer.errors, message="")
@@ -638,7 +640,7 @@ class UserGroupViewSet(viewsets.ViewSet):
                 else:
                     group.members.add(user)
                 group.save()
-                group_member_update(user=user, group=group)
+                group_member_update(target=user.id, group=group.id)
                 result = success_response(data={}, message="")
                 return Ok(result)
         result = failed_response(data={}, message="Group does not exist.")

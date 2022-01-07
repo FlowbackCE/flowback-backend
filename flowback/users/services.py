@@ -45,13 +45,15 @@ def group_user_permitted(
 
 def group_member_update(
         *,
-        user: int,
+        user: int = None,
         target: int,
         group: int,
         allow_vote: bool = False
 ) -> bool:
 
-    group_user_permitted(user=user, group=group, permission='admin')
+    if user:
+        group_user_permitted(user=user, group=group, permission='admin')
+
     group_user_permitted(user=target, group=group, permission='member')
     GroupMembers.objects.update_or_create(
         user_id=target,
