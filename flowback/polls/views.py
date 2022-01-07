@@ -847,7 +847,7 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         data['positive'] = adapter.proposal_get_serializer(positive_index, many=True).data
         data['negative'] = adapter.proposal_get_serializer(negative_index, many=True).data
-        data['allow_vote'] = get_group_member(user=user, group=poll.group).allow_vote
+        data['allow_vote'] = get_group_member(user=user.id, group=poll.group.id).allow_vote
 
         # TODO Bodge
         data['proposal_indexes'] = {}
@@ -864,7 +864,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         user = request.user
         data = request.data
         poll = get_object_or_404(Poll, pk=pk)
-        group_user = get_group_member(user=user, group=poll.group)
+        group_user = get_group_member(user=user.id, group=poll.group.id)
         adapter = PollAdapter(poll)
 
         if not group_user.allow_vote:

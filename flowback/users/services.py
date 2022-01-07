@@ -7,12 +7,14 @@ from django.core.exceptions import ValidationError
 
 def group_user_permitted(
         *,
-        user: User,
-        group: Group,
+        user: int,
+        group: int,
         permission: str,
-        raise_exception:
-        bool = True
+        raise_exception: bool = True
 ) -> bool:
+    user = get_object_or_404(User, id=user)
+    group = get_object_or_404(Group, id=group)
+
     def public(is_public):
         return Q(public=is_public)
 
@@ -43,16 +45,17 @@ def group_user_permitted(
 
 def group_member_update(
         *,
-        user: User,
-        target: User,
-        group: Group,
+        user: int,
+        target: int,
+        group: int,
         allow_vote: bool = False
 ) -> bool:
+
     group_user_permitted(user=user, group=group, permission='admin')
     group_user_permitted(user=target, group=group, permission='member')
     GroupMembers.objects.update_or_create(
-        user=target,
-        group=group,
+        user_id=target,
+        group_id=group,
         defaults=dict(allow_vote=allow_vote)
     )
     return True

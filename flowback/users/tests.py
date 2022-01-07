@@ -47,16 +47,16 @@ class UserTestCase(TestCase):
         for user, perms in member_permissions:
             for permission in permissions[perms:]:
                 self.assertTrue(group_user_permitted(
-                    user=user,
-                    group=group,
+                    user=user.id,
+                    group=group.id,
                     permission=permission
                     )
                 )
 
             for permission in permissions[:perms]:
                 self.assertFalse(group_user_permitted(
-                    user=user,
-                    group=group,
+                    user=user.id,
+                    group=group.id,
                     permission=permission,
                     raise_exception=False
                     )
@@ -82,9 +82,9 @@ class UserTestCase(TestCase):
         for user, target, allow_vote, passing in tests:
             if passing:
                 self.assertTrue(group_member_update(
-                    user=user,
-                    target=target,
-                    group=group,
+                    user=user.id,
+                    target=target.id,
+                    group=group.id,
                     allow_vote=allow_vote
                 ))
 
@@ -92,8 +92,8 @@ class UserTestCase(TestCase):
                 self.assertRaises(
                     PermissionDenied,
                     group_member_update,
-                    user=user,
-                    target=target,
-                    group=group,
+                    user=user.id,
+                    target=target.id,
+                    group=group.id,
                     allow_vote=allow_vote
                 )
