@@ -400,19 +400,22 @@ class UserGroupViewSet(viewsets.ViewSet):
         return BadRequest(result)
 
     @decorators.action(detail=False, methods=['post', 'update'], url_path="group_member_update")
-    def group_member_update(self, request):
+    def group_member_update_api(self, request, pk):
         class InputSerializer(serializers.Serializer):
             user = serializers.IntegerField
-            group = serializers.IntegerField
             allow_vote = serializers.BooleanField
 
         user = request.user
         data = request.data
 
         serializer = InputSerializer(data=data)
-        serializer = serializer.is_valid(raise_exception=True)
+        serializer.is_valid(raise_exception=True)
 
-        group_member_update(**serializer.validated_data)
+        target = get_object_or_404(User, id=serializer.validated_data.user)
+        group = get_object_or_404(Group, id=pk)
+        allow_vote = serializer.validated_data.allow_vote
+
+        group_member_update(user=user, target=target, group=group, allow_vote=allow_vote)
         return Response()
 
     @decorators.action(detail=False, methods=['get'], url_path="group_members_get")

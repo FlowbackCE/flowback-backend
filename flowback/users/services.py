@@ -5,7 +5,14 @@ from flowback.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 
 
-def group_user_permitted(*, user: User, group: Group, permission: str, raise_exception: bool = True):
+def group_user_permitted(
+        *,
+        user: User,
+        group: Group,
+        permission: str,
+        raise_exception:
+        bool = True
+) -> bool:
     def public(is_public):
         return Q(public=is_public)
 
@@ -34,7 +41,13 @@ def group_user_permitted(*, user: User, group: Group, permission: str, raise_exc
         return False
 
 
-def group_member_update(*, user: User, target: User, group: Group, allow_vote: bool = False):
+def group_member_update(
+        *,
+        user: User,
+        target: User,
+        group: Group,
+        allow_vote: bool = False
+) -> bool:
     group_user_permitted(user=user, group=group, permission='admin')
     group_user_permitted(user=target, group=group, permission='member')
     GroupMembers.objects.update_or_create(
