@@ -2,6 +2,8 @@ import factory
 from factory.django import DjangoModelFactory
 from faker import Faker
 from django.test import TestCase
+
+from flowback.exceptions import PermissionDenied
 from flowback.users.models import User, Group
 from flowback.users.services import group_user_permitted, group_member_update
 
@@ -58,4 +60,40 @@ class UserTestCase(TestCase):
                     permission=permission,
                     raise_exception=False
                     )
+                )
+
+    def test_group_member_update(self):
+        admin, member, user = [UserFactory.create() for x in range(3)]
+
+        group = GroupFactory(created_by=admin, updated_by=admin)
+        group.admins.add(admin)
+        group.members.add(member)
+        group.save()
+
+        tests = [
+            [admin, member, True, True],
+            [admin, user, True, False],
+            [member, admin, True, False],
+            [admin, member, False, True],
+            [admin, user, False, False],
+            [member, admin, False, False]
+        ]
+
+        for user, target, allow_vote, passing in tests:
+            if passing:
+                self.assertTrue(group_member_update(
+                    user=user,
+                    target=target,
+                    group=group,
+                    allow_vote=allow_vote
+                ))
+
+            else:
+                self.assertRaises(
+                    PermissionDenied,
+                    group_member_update,
+                    user=user,
+                    target=target,
+                    group=group,
+                    allow_vote=allow_vote
                 )
