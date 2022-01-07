@@ -1,83 +1,99 @@
-
+import factory
+from factory.django import DjangoModelFactory
+from faker import Faker
 from django.test import TestCase
-from django.core.files.uploadedfile import SimpleUploadedFile
-from flowback.polls.models import Poll
+
+from flowback.exceptions import PermissionDenied
 from flowback.users.models import User, Group
-from flowback.users.serializer import UserRegistrationSerializer
+from flowback.users.services import group_user_permitted, group_member_update
 
 import datetime
 
 
-# Create your tests here.
-# Default Test Case
-class DefaultTestCase(TestCase):
-    def setUp(self):
-        # Create User
-        user_one = dict(
-            email='example@example.com',
-            password='password123',
-            accepted_terms_use=True,
-            accepted_terms_condition=True
-        )
-        self.user_one = User.objects.create(**user_one)
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = User
 
-        # Create Group
-        group_one = dict(
-            created_by=self.user_one,
-            updated_by=self.user_one,
-            title='Example Group',
-            description='Example Description',
-            public=True,
-            members_request='direct_join',
-            poll_approval='direct_approve',
-            country='Sweden',
-            city='Stockholm'
-        )
-        self.group_one = Group.objects.create(**group_one)
-
-        # Create Poll
-        poll_one = dict(
-            created_by=self.user_one,
-            modified_by=self.user_one,
-            group=self.group_one,
-            title="Example Poll",
-            description="Example Description",
-            type=Poll.Type.POLL,
-            start_time=datetime.datetime.now(),
-            end_time=datetime.datetime.now() + datetime.timedelta(hours=1)
-        )
-        self.poll_one = Poll.objects.create(**poll_one)
-
-        poll_two = dict(
-            created_by=self.user_one,
-            modified_by=self.user_one,
-            group=self.group_one,
-            title="Example Poll",
-            description="Example Description",
-            type=Poll.Type.EVENT,
-            start_time=datetime.datetime.now(),
-            end_time=datetime.datetime.now() + datetime.timedelta(hours=1)
-        )
-        self.poll_two = Poll.objects.create(**poll_two)
+    username = factory.Faker('first_name')
+    email = factory.Faker('email')
+    accepted_terms_condition = True
 
 
-class UserTestCase(DefaultTestCase):
-    def test_user_registration_serializer_fail(self):
-        user_to_register = dict(
-            email='placeholder@example.com',
-            password='password123',
-            accepted_terms_use=False,
-            accepted_terms_condition=True
-        )
-        test = UserRegistrationSerializer(data=user_to_register)
-        self.assertFalse(test.is_valid())
+class GroupFactory(DjangoModelFactory):
+    class Meta:
+        model = Group
 
-    def test_user_registration_serializer_pass(self):
-        user_to_register = dict(
-            email='placeholder@example.com',
-            password='password123',
-            accepted_terms_use=True,
-            accepted_terms_condition=True
-        )
-        test = UserRegistrationSerializer(data=user_to_register)
-        self.assertTrue(test.is_valid())
+    title = factory.Faker('company')
+    created_by = UserFactory.create()
+    updated_by = created_by
+
+
+class UserTestCase(TestCase):
+    def test_group_user_permitted(self):
+        guest, member, delegator, moderator, admin, owner = [UserFactory.create() for x in range(6)]
+
+        group = GroupFactory(created_by=owner, updated_by=owner)
+        group.owners.add(owner)
+        group.admins.add(admin)
+        group.moderators.add(moderator)
+        group.delegators.add(delegator)
+        group.members.add(member)
+        group.save()
+
+        permissions = ['owner', 'admin', 'moderator', 'delegator', 'member', 'guest']
+        member_permissions = ((owner, 0), (admin, 1), (moderator, 2), (delegator, 3),
+                              (member, 3), (guest, 5))
+
+        for user, perms in member_permissions:
+            for permission in permissions[perms:]:
+                self.assertTrue(group_user_permitted(
+                    user=user.id,
+                    group=group.id,
+                    permission=permission
+                    )
+                )
+
+            for permission in permissions[:perms]:
+                self.assertFalse(group_user_permitted(
+                    user=user.id,
+                    group=group.id,
+                    permission=permission,
+                    raise_exception=False
+                    )
+                )
+
+    def test_group_member_update(self):
+        admin, member, user = [UserFactory.create() for x in range(3)]
+
+        group = GroupFactory(created_by=admin, updated_by=admin)
+        group.admins.add(admin)
+        group.members.add(member)
+        group.save()
+
+        tests = [
+            [admin, member, True, True],
+            [admin, user, True, False],
+            [member, admin, True, False],
+            [admin, member, False, True],
+            [admin, user, False, False],
+            [member, admin, False, False]
+        ]
+
+        for user, target, allow_vote, passing in tests:
+            if passing:
+                self.assertTrue(group_member_update(
+                    user=user.id,
+                    target=target.id,
+                    group=group.id,
+                    allow_vote=allow_vote
+                ))
+
+            else:
+                self.assertRaises(
+                    PermissionDenied,
+                    group_member_update,
+                    user=user.id,
+                    target=target.id,
+                    group=group.id,
+                    allow_vote=allow_vote
+                )

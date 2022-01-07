@@ -23,6 +23,8 @@ cssutils==1.0.2
 daphne==3.0.1
 decorator==4.4.2
 defusedxml==0.6.0
+Faker==11.1.0
+factory_boy==3.2.1
 dj-database-url==0.5.0
 Django==3.1.2
 django-cors-headers==3.6.0
