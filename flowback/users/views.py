@@ -716,7 +716,7 @@ class UserGroupViewSet(viewsets.ViewSet):
         # get group object by group id
         group = Group.objects.get(id=data.get('group'))
         # check the role of user in group
-        if user in group.owners.all() or user in group.admins.all():
+        if group_user_permitted(user=user.id, group=group.id, permission='member'):
             serializer = CreateGroupDocSerializer(data=data)
             if serializer.is_valid():
                 # create or get the doc object for add that doc in group
