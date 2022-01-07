@@ -22,7 +22,6 @@ class NotificationTestBaseClass(TestCase):
                 email=mail,
                 username=mail,
                 password=passwd,
-                accepted_terms_use=True,
                 accepted_terms_condition=True
             )
             return User.objects.create(**user)

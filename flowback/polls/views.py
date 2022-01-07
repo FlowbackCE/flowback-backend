@@ -29,6 +29,7 @@ from flowback.users.models import User
 from flowback.polls.models import Poll, PollDocs, PollVotes, PollComments, PollBookmark,\
     PollProposal, PollProposalEvent, PollProposalComments, PollProposalIndex,\
     PollProposalEventIndex, PollUserDelegate
+from flowback.users.selectors import get_group_member
 from flowback.users.serializer import UserGroupCreateSerializer, MyGroupSerializer, AddParticipantSerializer, \
     OnboardUserFirstSerializer, OnboardUserSecondSerializer, GroupParticipantSerializer, CreateGroupRequestSerializer, \
     UpdateGroupRequestSerializer
@@ -846,6 +847,7 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         data['positive'] = adapter.proposal_get_serializer(positive_index, many=True).data
         data['negative'] = adapter.proposal_get_serializer(negative_index, many=True).data
+        data['allow_vote'] = get_group_member(user=user.id, group=poll.group.id).allow_vote
 
         # TODO Bodge
         data['proposal_indexes'] = {}
@@ -862,7 +864,11 @@ class GroupPollViewSet(viewsets.ViewSet):
         user = request.user
         data = request.data
         poll = get_object_or_404(Poll, pk=pk)
+        group_user = get_group_member(user=user.id, group=poll.group.id)
         adapter = PollAdapter(poll)
+
+        if not group_user.allow_vote:
+            return Response(data='User has no permission to vote', status=status.HTTP_400_BAD_REQUEST)
 
         # TODO Bodge
         data['positive'].reverse()

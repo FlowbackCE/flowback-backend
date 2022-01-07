@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from flowback.users.models import User, Group, OnboardUser, GroupRequest, GroupDocs, Country, State, City, Friends, \
-    FriendChatMessage, GroupChatMessage
+    FriendChatMessage, GroupChatMessage, GroupMembers
 
 
 # from rest_framework_simplejwt.serializers import TokenObtainSerializer

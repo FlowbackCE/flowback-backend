@@ -6,7 +6,7 @@ import datetime
 from random import randint
 from django.core.mail import send_mail
 from django.db.models import Q
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, get_list_or_404
 from rest_framework import decorators, viewsets, status, serializers
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -25,6 +25,7 @@ from flowback.users.models import User, PasswordReset
 from flowback.users.models import Country, State, City
 from flowback.users.models import Friends
 from flowback.polls.models import Poll
+from flowback.users.selectors import get_group_members
 from flowback.users.serializer import UserGroupCreateSerializer, MyGroupSerializer, AddParticipantSerializer, \
     OnboardUserFirstSerializer, OnboardUserSecondSerializer, GroupParticipantSerializer, CreateGroupRequestSerializer, \
     UpdateGroupRequestSerializer, GetChatMessagesSerializer, GetAllGroupRoomsSerializer, GetGroupChatMessagesSerializer
@@ -34,6 +35,7 @@ from flowback.users.serializer import UserSerializer, SimpleUserSerializer, User
     ResetPasswordSerializer, ResetPasswordVerifySerializer
 from flowback.users.serializer import CreateFriendRequestSerializer, GetAllFriendRequestSerializer, GetAllFriendsRoomSerializer
 from flowback.polls.serializer import SearchPollSerializer
+from flowback.users.services import group_member_update, group_user_permitted
 from settings.base import EMAIL_HOST_USER, DEBUG
 
 
@@ -398,6 +400,36 @@ class UserGroupViewSet(viewsets.ViewSet):
         result = failed_response(data={}, message="Group is not exist.")
         return BadRequest(result)
 
+    @decorators.action(detail=False, methods=['post', 'update'], url_path="group_member_update")
+    def group_member_update_api(self, request, group: int):
+        class InputSerializer(serializers.Serializer):
+            target = serializers.IntegerField
+            allow_vote = serializers.BooleanField
+
+        user = request.user
+        data = request.data
+
+        serializer = InputSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        group_member_update(user=user.id, group=group, **serializer.validated_data)
+        return Response()
+
+    @decorators.action(detail=False, methods=['get'], url_path="group_members_get")
+    def group_members_get(self, request, group):
+        class OutputSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = GroupMembers
+                fields = (
+                    'user',
+                    'allow_vote'
+                )
+
+        group_user_permitted(user=request.user, group=group, permission='member')
+        group_members = get_group_members(group=group)
+        serializer = OutputSerializer(group_members, many=True)
+
+        return Response(data=serializer.data)
 
     @decorators.action(detail=False, methods=['get'], url_path="my_groups")
     def my_groups(self, request, *args, **kwargs):
@@ -594,6 +626,7 @@ class UserGroupViewSet(viewsets.ViewSet):
                 serializer = CreateGroupRequestSerializer(data=data)
                 if serializer.is_valid(raise_exception=False):
                     serializer.save()
+                    group_member_update(user=user, group=group)
                     result = success_response(data=None, message="")
                     return Created(result)
                 result = failed_response(data=serializer.errors, message="")
@@ -605,6 +638,7 @@ class UserGroupViewSet(viewsets.ViewSet):
                 else:
                     group.members.add(user)
                 group.save()
+                group_member_update(user=user, group=group)
                 result = success_response(data={}, message="")
                 return Ok(result)
         result = failed_response(data={}, message="Group does not exist.")
