@@ -402,7 +402,7 @@ class UserGroupViewSet(viewsets.ViewSet):
         result = failed_response(data={}, message="Group is not exist.")
         return BadRequest(result)
 
-    @decorators.action(detail=False, methods=['post', 'update'], url_path="group_member_update")
+    @decorators.action(detail=True, methods=['post', 'update'], url_path="group_member_update")
     def group_member_update_api(self, request, group: int):
         class InputSerializer(serializers.Serializer):
             target = serializers.IntegerField
@@ -417,8 +417,8 @@ class UserGroupViewSet(viewsets.ViewSet):
         group_member_update(user=user.id, group=group, **serializer.validated_data)
         return Response()
 
-    @decorators.action(detail=False, methods=['get'], url_path="group_members_get")
-    def group_members_get(self, request, group):
+    @decorators.action(detail=True, methods=['get'], url_path="group_members_get")
+    def group_members_get_api(self, request, group):
         class OutputSerializer(serializers.ModelSerializer):
             class Meta:
                 model = GroupMembers
