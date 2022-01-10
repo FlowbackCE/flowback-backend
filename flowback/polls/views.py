@@ -750,11 +750,20 @@ class GroupPollViewSet(viewsets.ViewSet):
                 positive = sorted([x for x in user_index if x.is_positive], key=lambda x: x.priority)
                 negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
 
-                for sub, index in enumerate(positive):
-                    counter[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
+                # Count votes
+                if poll.voting_type == poll.VotingType.CONDORCET:
+                    for sub, index in enumerate(positive):
+                        counter[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
 
-                for sub, index in enumerate(negative):
-                    counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
+                    for sub, index in enumerate(negative):
+                        counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
+
+                elif poll.voting_type == poll.VotingType.TRAFFIC:
+                    for index in positive:
+                        counter[index.proposal_id] += 1 * multiplier
+
+                    for index in negative:
+                        counter[index.proposal_id] -= 1 * multiplier
 
             # Insert counter to proposals
             for key, counter_proposal in enumerate(counter_proposals):
