@@ -427,7 +427,7 @@ class UserGroupViewSet(viewsets.ViewSet):
                     'allow_vote'
                 )
 
-        group_user_permitted(user=request.user, group=pk, permission='member')
+        group_user_permitted(user=request.user.id, group=pk, permission='member')
         group_members = get_group_members(group=pk)
         serializer = OutputSerializer(group_members, many=True)
 
