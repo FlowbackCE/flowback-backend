@@ -746,19 +746,21 @@ class GroupPollViewSet(viewsets.ViewSet):
                 if user in group.delegators.all():
                     multiplier = len(PollUserDelegate.objects.filter(delegator=user, group=group).all())
 
-                # Separate positive and negative indexes, order by priority ascending
-                positive = sorted([x for x in user_index if x.is_positive], key=lambda x: x.priority)
-                negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
-
                 # Count votes
                 if poll.voting_type == poll.VotingType.CONDORCET:
+                    positive = sorted([x for x in user_index if x.is_positive], key=lambda x: x.priority)
+                    # negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
+
                     for sub, index in enumerate(positive):
                         counter[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
 
-                    for sub, index in enumerate(negative):
-                        counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
+                    # for sub, index in enumerate(negative):
+                    #    counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
 
                 elif poll.voting_type == poll.VotingType.TRAFFIC:
+                    positive = [x for x in user_index if x.is_positive]
+                    negative = [x for x in user_index if not x.is_positive]
+
                     for index in positive:
                         counter[index.proposal_id] += 1 * multiplier
 
