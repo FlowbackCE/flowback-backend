@@ -405,8 +405,8 @@ class UserGroupViewSet(viewsets.ViewSet):
     @decorators.action(detail=True, methods=['post', 'update'], url_path="group_member_update")
     def group_member_update_api(self, request, pk):
         class InputSerializer(serializers.Serializer):
-            target = serializers.IntegerField
-            allow_vote = serializers.BooleanField
+            target = serializers.IntegerField()
+            allow_vote = serializers.BooleanField()
 
         user = request.user
         data = request.data
