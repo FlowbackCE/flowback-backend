@@ -888,17 +888,17 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         elif poll.voting_type == poll.VotingType.TRAFFIC:
             # Positive Indexes
-            index = [dict(proposal=x, user=user.id, poll=poll.id,
-                          priority=1, is_positive=True
-                          ) for x in data.get('positive', [])]
+            index = [dict(proposal=y, user=user.id, poll=poll.id,
+                          priority=x, is_positive=True
+                          ) for x, y in enumerate(data.get('positive', []))]
 
             # Negative Indexes
-            index += [dict(proposal=x, user=user.id, poll=poll.id,
-                           priority=-1, is_positive=False
-                           ) for x in data.get('negative', [])]
+            index += [dict(proposal=y, user=user.id, poll=poll.id,
+                           priority=x, is_positive=False
+                           ) for x, y in enumerate(data.get('negative', []))]
 
         else:
-            return Response('Unknown voting_type', status=status.HTTP_400_BAD_REQUEST)
+            return Response('Unknown variable voting_type.', status=status.HTTP_400_BAD_REQUEST)
 
         index = adapter.index_create_serializer(data=index, many=True)
 
