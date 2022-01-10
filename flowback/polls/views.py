@@ -70,6 +70,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                                                            title=serialized_data.get('title'),
                                                            description=serialized_data.get('description'),
                                                            type=serialized_data.get('type'),
+                                                           voting_type=serialized_data.get('voting_type'),
                                                            start_time=datetime.datetime.now(),
                                                            end_time=serialized_data.get('end_time'),
                                                            )

@@ -77,6 +77,15 @@ class Poll(TimeStampedUUIDModel):
         default=Type.POLL
     )
 
+    class VotingType(models.TextChoices):
+        CONDORCET = 0, _('condorcet')
+        TRAFFIC = 1, _('traffic')
+
+    voting_type = models.IntegerField(
+        choices=VotingType.choices,
+        default=VotingType.CONDORCET
+    )
+
     top_proposal = models.ForeignKey('polls.PollProposal', related_name="poll_top_proposal",
                                      on_delete=models.DO_NOTHING, null=True, blank=True)
     success = models.BooleanField(default=False)
