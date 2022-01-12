@@ -11,7 +11,7 @@ from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from taggit.managers import TaggableManager
 
-from flowback.base.models import TimeStampedUUIDModel
+from flowback.base.models import TimeStampedModel
 
 class CustomUserManager(BaseUserManager):
 
@@ -29,7 +29,7 @@ class CustomUserManager(BaseUserManager):
 
 
 # A user model which doesn't extend AbstractUser
-class User(AbstractBaseUser, PermissionsMixin, TimeStampedUUIDModel):
+class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     """
         An abstract base class implementing a fully featured User model with
         admin-compliant permissions.
@@ -126,7 +126,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedUUIDModel):
             return self.username
 
 
-class Group(TimeStampedUUIDModel):
+class Group(TimeStampedModel):
     DIRECT_JOIN = 'direct_join'
     NEEDS_MODERATION = 'need_moderation'
     MEMBER_REQUEST_TYPE_CHOICES = (
@@ -163,7 +163,7 @@ class Group(TimeStampedUUIDModel):
     deleted = models.BooleanField(default=False)
 
 
-class GroupMembers(TimeStampedUUIDModel):
+class GroupMembers(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
     allow_vote = models.BooleanField(default=False)
@@ -172,7 +172,7 @@ class GroupMembers(TimeStampedUUIDModel):
         unique_together = 'user', 'group'
 
 
-class GroupRequest(TimeStampedUUIDModel):
+class GroupRequest(TimeStampedModel):
     REQUESTED = 'requested'
     ACCEPTED = 'accepted'
     REJECTED = 'rejected'
@@ -192,21 +192,21 @@ class GroupRequest(TimeStampedUUIDModel):
         unique_together = ('group', 'participant')
 
 
-class GroupDocs(TimeStampedUUIDModel):
+class GroupDocs(TimeStampedModel):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='group_name')
     doc = models.FileField(upload_to='group/docs/')
     doc_name = models.CharField(max_length=256)
     created_by = models.ForeignKey(User, related_name='grp_doc_created_by', on_delete=models.CASCADE)
 
 
-class OnboardUser(TimeStampedUUIDModel):
+class OnboardUser(TimeStampedModel):
     email = models.EmailField(unique=True)
     screen_name = models.CharField(max_length=50)
     verification_code = models.IntegerField()
     is_verified = models.BooleanField(default=False)
 
 
-class PasswordReset(TimeStampedUUIDModel):
+class PasswordReset(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     verification_code = models.IntegerField(unique=True)
 
@@ -229,7 +229,7 @@ class City(models.Model):
     state = models.ForeignKey(State, on_delete=models.CASCADE)
 
 
-class Friends(TimeStampedUUIDModel):
+class Friends(TimeStampedModel):
     user_1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='request_sender')
     user_2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='request_receiver')
     room_name = models.CharField(max_length=100)
@@ -239,7 +239,7 @@ class Friends(TimeStampedUUIDModel):
     block = models.BooleanField(default=False)
 
 
-class FriendChatMessage(TimeStampedUUIDModel):
+class FriendChatMessage(TimeStampedModel):
     TEXT_MESSAGE = 'text'
     MESSAGE_TYPE_CHOICES = (
         (TEXT_MESSAGE, _('Text')),
@@ -253,7 +253,7 @@ class FriendChatMessage(TimeStampedUUIDModel):
     seen_at = models.DateTimeField(blank=True, null=True)
 
 
-class GroupChatMessage(TimeStampedUUIDModel):
+class GroupChatMessage(TimeStampedModel):
     TEXT_MESSAGE = 'text'
     MESSAGE_TYPE_CHOICES = (
         (TEXT_MESSAGE, _('Text')),

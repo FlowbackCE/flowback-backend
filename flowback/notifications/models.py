@@ -1,5 +1,5 @@
 from django.db import models
-from flowback.base.models import TimeStampedUUIDModel
+from flowback.base.models import TimeStampedModel
 from flowback.users.models import User
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -21,7 +21,7 @@ class NotificationBase(models.Model):
 
 
 # All notifications goes in Notification model
-class Notification(TimeStampedUUIDModel, NotificationBase):
+class Notification(TimeStampedModel, NotificationBase):
     link_type = models.CharField(choices=NotificationBase.Type.choices, max_length=255)  # The target link
     link_target = models.IntegerField()  # The link target id
     message = models.TextField()  # The notification itself
@@ -35,13 +35,13 @@ class Notification(TimeStampedUUIDModel, NotificationBase):
 
 
 # NotificationUser is a many to many relationship between user and notification
-class UserNotifications(TimeStampedUUIDModel):
+class UserNotifications(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     notification = models.ForeignKey(Notification, on_delete=models.CASCADE)
     read = models.BooleanField(default=False)
 
 
-class NotificationSubscribers(TimeStampedUUIDModel, NotificationBase):
+class NotificationSubscribers(TimeStampedModel, NotificationBase):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Meta:

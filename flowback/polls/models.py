@@ -14,11 +14,11 @@ from taggit.managers import TaggableManager
 
 from tree_queries.models import TreeNode
 
-from flowback.base.models import TimeStampedUUIDModel
+from flowback.base.models import TimeStampedModel
 from flowback.users.models import Group, User
 
 
-class Post(TimeStampedUUIDModel):
+class Post(TimeStampedModel):
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
     description = models.TextField(_('Description'), blank=True)
     image = models.ImageField(null=True, blank=True)
@@ -36,7 +36,7 @@ class Post(TimeStampedUUIDModel):
         verbose_name_plural = _('Posts')
 
 
-class PostComment(TimeStampedUUIDModel):
+class PostComment(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='post_comments')
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='post_comments')
     comment = models.TextField(_('Post Comment'))
@@ -54,7 +54,7 @@ class PollDocs(models.Model):
     file = models.FileField(upload_to='groups/polls/docs/')
 
 
-class Poll(TimeStampedUUIDModel):
+class Poll(TimeStampedModel):
 
     def poll_docs_path(self, instance, filename):
         return os.path.join(
@@ -90,7 +90,7 @@ class Poll(TimeStampedUUIDModel):
     modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='poll_modified_by')
 
 
-class PollUserDelegate(TimeStampedUUIDModel):
+class PollUserDelegate(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='+')
     delegator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='delegate_user_id')
@@ -99,7 +99,7 @@ class PollUserDelegate(TimeStampedUUIDModel):
         unique_together = ('user', 'group', 'delegator')
 
 
-class PollVotes(TimeStampedUUIDModel):
+class PollVotes(TimeStampedModel):
     UP_VOTE = 'upvote'
     DOWN_VOTE = 'downvote'
     VOTING_TYPE_CHOICES = (
@@ -112,7 +112,7 @@ class PollVotes(TimeStampedUUIDModel):
     vote_type = models.CharField(choices=VOTING_TYPE_CHOICES, max_length=25)
 
 
-class PollComments(TimeStampedUUIDModel):
+class PollComments(TimeStampedModel):
     comment = models.TextField(_('Poll Comments'))
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
@@ -122,12 +122,12 @@ class PollComments(TimeStampedUUIDModel):
     modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comment_modified_by')
 
 
-class PollBookmark(TimeStampedUUIDModel):
+class PollBookmark(TimeStampedModel):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
-class PollProposal(TimeStampedUUIDModel):
+class PollProposal(TimeStampedModel):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
@@ -146,7 +146,7 @@ class PollProposal(TimeStampedUUIDModel):
     file = models.FileField(upload_to='groups/polls/proposal/', blank=True, null=True)
 
 
-class PollProposalEvent(TimeStampedUUIDModel):
+class PollProposalEvent(TimeStampedModel):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
@@ -168,7 +168,7 @@ class PollProposalEvent(TimeStampedUUIDModel):
         unique_together = (('poll', 'user'), ('poll', 'date'))
 
 
-class PollProposalIndex(TimeStampedUUIDModel):
+class PollProposalIndex(TimeStampedModel):
     proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     priority = models.IntegerField()
@@ -178,7 +178,7 @@ class PollProposalIndex(TimeStampedUUIDModel):
         unique_together = ('proposal', 'user')
 
 
-class PollProposalEventIndex(TimeStampedUUIDModel):
+class PollProposalEventIndex(TimeStampedModel):
     proposal = models.ForeignKey(PollProposalEvent, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     priority = models.IntegerField()
@@ -188,7 +188,7 @@ class PollProposalEventIndex(TimeStampedUUIDModel):
         unique_together = ('proposal', 'user', 'priority', 'is_positive')
 
 
-class PollProposalComments(TimeStampedUUIDModel):
+class PollProposalComments(TimeStampedModel):
     comment = models.TextField(_('Counter Proposal Comments'))
     counter_proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
     reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
@@ -198,7 +198,7 @@ class PollProposalComments(TimeStampedUUIDModel):
     modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_comment_modified_by')
 
 
-class PollProposalThreads(TreeNode, TimeStampedUUIDModel):
+class PollProposalThreads(TreeNode, TimeStampedModel):
     proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
     comment = models.TextField()
     score = models.ManyToManyField(User, related_name='proposal_thread_score')
@@ -206,7 +206,7 @@ class PollProposalThreads(TreeNode, TimeStampedUUIDModel):
     modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_thread_modified_by')
 
 
-class PollProposalEventComments(TimeStampedUUIDModel):
+class PollProposalEventComments(TimeStampedModel):
     comment = models.TextField(_('Counter Proposal Comments'))
     counter_proposal = models.ForeignKey(PollProposalEvent, on_delete=models.CASCADE)
     reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
@@ -216,7 +216,7 @@ class PollProposalEventComments(TimeStampedUUIDModel):
     modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposal_event_comment_modified_by')
 
 
-class PollProposalEventThreads(TreeNode, TimeStampedUUIDModel):
+class PollProposalEventThreads(TreeNode, TimeStampedModel):
     proposal = models.ForeignKey(PollProposalEvent, on_delete=models.CASCADE)
     comment = models.TextField()
     score = models.ManyToManyField(User, related_name='proposal_event_thread_score')

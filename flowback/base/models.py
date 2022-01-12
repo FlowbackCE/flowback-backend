@@ -1,8 +1,7 @@
-
 from django.db import models
 
 
-class TimeStampedUUIDModel(models.Model):
+class TimeStampedModel(models.Model):
     """
     This model is used for record the created and modified date of any record.
     """
