@@ -78,8 +78,8 @@ class Poll(TimeStampedModel):
     )
 
     class VotingType(models.TextChoices):
-        CONDORCET = 0, _('condorcet')
-        TRAFFIC = 1, _('traffic')
+        CONDORCET = 0, 'condorcet'
+        TRAFFIC = 1, 'traffic'
 
     voting_type = models.IntegerField(
         choices=VotingType.choices,

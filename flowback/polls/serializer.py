@@ -30,6 +30,7 @@ class ChoiceField(serializers.ChoiceField):
 
 class GroupPollCreateSerializer(serializers.ModelSerializer):
     type = ChoiceField(choices=Poll.Type.choices)
+    voting_type = ChoiceField(choices=Poll.VotingType.choices)
 
     def to_internal_value(self, data):
         if data.get('type', None) == '':
