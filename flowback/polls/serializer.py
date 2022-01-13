@@ -38,7 +38,7 @@ class GroupPollCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Poll
-        fields = ('group', 'title', 'description', 'type', 'end_time')
+        fields = ('group', 'title', 'description', 'type', 'voting_type', 'end_time')
 
     def validate_end_time(self, obj: datetime.datetime):
         if obj <= datetime.datetime.now():

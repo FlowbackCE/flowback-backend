@@ -72,6 +72,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                                                            title=serialized_data.get('title'),
                                                            description=serialized_data.get('description'),
                                                            type=serialized_data.get('type'),
+                                                           voting_type=serialized_data.get('voting_type'),
                                                            start_time=datetime.datetime.now(),
                                                            end_time=serialized_data.get('end_time'),
                                                            )
@@ -751,15 +752,26 @@ class GroupPollViewSet(viewsets.ViewSet):
                 if user in group.delegators.all():
                     multiplier = len(PollUserDelegate.objects.filter(delegator=user, group=group).all())
 
-                # Separate positive and negative indexes, order by priority ascending
-                positive = sorted([x for x in user_index if x.is_positive], key=lambda x: x.priority)
-                negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
+                # Count votes
+                if poll.voting_type == poll.VotingType.CONDORCET:
+                    positive = sorted([x for x in user_index if x.is_positive], key=lambda x: x.priority)
+                    # negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
 
-                for sub, index in enumerate(positive):
-                    counter[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
+                    for sub, index in enumerate(positive):
+                        counter[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
 
-                for sub, index in enumerate(negative):
-                    counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
+                    # for sub, index in enumerate(negative):
+                    #    counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
+
+                elif poll.voting_type == poll.VotingType.TRAFFIC:
+                    positive = [x for x in user_index if x.is_positive]
+                    negative = [x for x in user_index if not x.is_positive]
+
+                    for index in positive:
+                        counter[index.proposal_id] += 1 * multiplier
+
+                    for index in negative:
+                        counter[index.proposal_id] -= 1 * multiplier
 
             # Insert counter to proposals
             for key, counter_proposal in enumerate(counter_proposals):
@@ -879,15 +891,31 @@ class GroupPollViewSet(viewsets.ViewSet):
         # TODO Bodge
         data['positive'].reverse()
 
-        # Positive Indexes
-        index = [dict(proposal=y, user=user.id, poll=poll.id,
-                      priority=x, is_positive=True
-                      ) for x, y in enumerate(data.get('positive', []))]
+        index = []
+        if poll.voting_type == poll.VotingType.CONDORCET:
+            # Positive Indexes
+            index = [dict(proposal=y, user=user.id, poll=poll.id,
+                          priority=x, is_positive=True
+                          ) for x, y in enumerate(data.get('positive', []))]
 
-        # Negative Indexes
-        index += [dict(proposal=y, user=user.id, poll=poll.id,
-                       priority=x, is_positive=False
-                       ) for x, y in enumerate(data.get('negative', []))]
+            # Negative Indexes
+            # index += [dict(proposal=y, user=user.id, poll=poll.id,
+            #               priority=x, is_positive=False
+            #               ) for x, y in enumerate(data.get('negative', []))]
+
+        elif poll.voting_type == poll.VotingType.TRAFFIC:
+            # Positive Indexes
+            index = [dict(proposal=y, user=user.id, poll=poll.id,
+                          priority=x, is_positive=True
+                          ) for x, y in enumerate(data.get('positive', []))]
+
+            # Negative Indexes
+            index += [dict(proposal=y, user=user.id, poll=poll.id,
+                           priority=x, is_positive=False
+                           ) for x, y in enumerate(data.get('negative', []))]
+
+        else:
+            return Response('Unknown variable voting_type.', status=status.HTTP_400_BAD_REQUEST)
 
         index = adapter.index_create_serializer(data=index, many=True)
 
