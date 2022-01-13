@@ -77,9 +77,9 @@ class Poll(TimeStampedModel):
         default=Type.POLL
     )
 
-    class VotingType(models.TextChoices):
-        CONDORCET = 0, 'condorcet'
-        TRAFFIC = 1, 'traffic'
+    class VotingType(models.IntegerChoices):
+        CONDORCET = 0, _('condorcet')
+        TRAFFIC = 1, _('traffic')
 
     voting_type = models.IntegerField(
         choices=VotingType.choices,

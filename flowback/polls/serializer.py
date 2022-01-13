@@ -179,13 +179,20 @@ class GroupPollDetailsSerializer(serializers.ModelSerializer):
     user_type = serializers.SerializerMethodField()
     comments_details = serializers.SerializerMethodField()
     group = serializers.SerializerMethodField('get_group_details')
-
+    voting_type = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
 
     class Meta:
         model = Poll
-        fields = ('id', 'group', 'user_type', 'title', 'description', 'tags', 'files', 'accepted', 'accepted_at', 'end_time',
-                  'created_at', 'modified_at', 'created_by', 'modified_by', 'vote_details', "voting_status", "discussion",
-                  'comments_details')
+        fields = ('id', 'group', 'user_type', 'title', 'description', 'tags', 'files', 'accepted', 'accepted_at',
+                  'end_time', 'created_at', 'modified_at', 'created_by', 'modified_by', 'vote_details', "voting_status",
+                  "discussion", 'comments_details', 'type', 'voting_type')
+
+    def get_voting_type(self, obj):
+        return obj.get_voting_type_display()
+
+    def get_type(self, obj):
+        return obj.get_type_display()
 
     def get_group_details(self, obj):
         grp_serializers = GroupDetailPollListSerializer(obj.group, context={'request': self.context.get("request")})
