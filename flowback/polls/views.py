@@ -42,6 +42,8 @@ from flowback.polls.serializer import GroupPollCreateSerializer, GetGroupPollsLi
     GroupPollUpdateSerializer, PollProposalCreateSerializer, PollProposalEventCreateSerializer,\
     GetPollCounterProposalDetailsSerializer, CreateCounterProposalCommentSerializer, DelegatorSerializer
 from flowback.polls.helper import PollAdapter
+from flowback.users.services import group_user_permitted
+
 
 class GroupPollViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -481,8 +483,12 @@ class GroupPollViewSet(viewsets.ViewSet):
         poll = Poll.objects.filter(id=data.get('poll')).first()
         if poll:
             # get all public group or user participate on that group
-            participant = Group.objects.filter(Q(public=True) | Q(owners__in=[user]) | Q(admins__in=[user]) | Q(moderators__in=[user]) |
-                                               Q(members__in=[user]), id=data.get('group'))
+            participant = group_user_permitted(
+                user=user.id,
+                group=poll.group.id,
+                permission='member',
+                raise_exception=False
+            )
             if participant:
                 serializer = GroupPollDetailsSerializer(poll, context={'request': self.request})
                 response_data = serializer.data
@@ -519,7 +525,7 @@ class GroupPollViewSet(viewsets.ViewSet):
             if delegate_is_valid and user_is_group_member:
                 # Delete all poll votes
                 PollUserDelegate.objects.filter(user=user, group=group).delete()
-                PollProposalIndex.objects.filter(user=user, counter_proposal__poll__group=group).delete()
+                PollProposalIndex.objects.filter(user=user, proposal__poll__group=group).delete()
                 PollUserDelegate.objects.create(user=user,
                                                 group=group,
                                                 delegator=delegator
@@ -549,7 +555,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                 if keep_delegator_votes:
                     votes = copy.deepcopy(PollProposalIndex.objects.filter(
                         user=delegator.delegator,
-                        counter_proposal__poll__group=group
+                        proposal__poll__group=group
                     ).all())
                     for i in range(len(votes)):
                         votes[i].user = user
@@ -942,7 +948,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         if counter_proposal:
             # check the user permission
             counter_proposal = counter_proposal.filter(Q(user=user),  Q(poll__group__owners__in=[user]) | Q(poll__group__admins__in=[user]) | Q(poll__group__moderators__in=[user]) |
-                                                       Q(poll__group__members__in=[user]))
+                                                       Q(poll__group__members__in=[user]), Q(poll__group__delegators__in=[user]))
             if counter_proposal:
                 adapter = PollAdapter(counter_proposal.poll)
                 # serializer for create counter proposal comment
