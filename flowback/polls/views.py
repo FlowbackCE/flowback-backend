@@ -26,8 +26,8 @@ from flowback.notifications.services import notification_create, notification_up
 from flowback.response_handler import success_response, failed_response
 from flowback.users.models import Group, OnboardUser
 from flowback.users.models import User
-from flowback.polls.models import Poll, PollDocs, PollVotes, PollComments, PollBookmark,\
-    PollProposal, PollProposalEvent, PollProposalComments, PollProposalIndex,\
+from flowback.polls.models import Poll, PollDocs, PollVotes, PollComments, PollBookmark, \
+    PollProposal, PollProposalEvent, PollProposalComments, PollProposalIndex, \
     PollProposalEventIndex, PollUserDelegate
 from flowback.users.selectors import get_group_member
 from flowback.users.serializer import UserGroupCreateSerializer, MyGroupSerializer, AddParticipantSerializer, \
@@ -35,11 +35,11 @@ from flowback.users.serializer import UserGroupCreateSerializer, MyGroupSerializ
     UpdateGroupRequestSerializer
 from flowback.users.serializer import UserSerializer, SimpleUserSerializer, UserRegistrationSerializer, \
     GroupDetailsSerializer
-from flowback.polls.serializer import GroupPollCreateSerializer, GetGroupPollsListSerializer,\
+from flowback.polls.serializer import GroupPollCreateSerializer, GetGroupPollsListSerializer, \
     GroupPollDetailsSerializer, CreatePollCommentSerializer, GetPollCommentsSerializer, \
     PollProposalGetSerializer, PollProposalEventGetSerializer, PollProposalIndexCreateSerializer, \
     PollProposalEventIndexCreateSerializer, GetPendingPollListSerializer, GetBookmarkPollListSerializer, \
-    GroupPollUpdateSerializer, PollProposalCreateSerializer, PollProposalEventCreateSerializer,\
+    GroupPollUpdateSerializer, PollProposalCreateSerializer, PollProposalEventCreateSerializer, \
     GetPollCounterProposalDetailsSerializer, CreateCounterProposalCommentSerializer, DelegatorSerializer
 from flowback.polls.helper import PollAdapter
 from flowback.users.services import group_user_permitted
@@ -227,7 +227,6 @@ class GroupPollViewSet(viewsets.ViewSet):
         if group:
             # check the role of user in group
             if user in group.owners.all() or user in group.admins.all() or user in group.moderators.all():
-
                 # get poll and create serializer for get json data
                 polls = Poll.objects.filter(group=group, accepted=False)
                 serializer = GetPendingPollListSerializer(polls, many=True)
@@ -304,9 +303,10 @@ class GroupPollViewSet(viewsets.ViewSet):
         group = Group.objects.filter(id=data.get('group_id')).first()
         if group:
             # get all the group where logged in user is a participant on that group
-            part_of_group = Group.objects.filter(Q(owners__in=[user]) | Q(admins__in=[user]) | Q(moderators__in=[user]) |
-                                                 Q(members__in=[user]) | Q(delegators__in=[user]),
-                                                 id=data.get('group_id'))
+            part_of_group = Group.objects.filter(
+                Q(owners__in=[user]) | Q(admins__in=[user]) | Q(moderators__in=[user]) |
+                Q(members__in=[user]) | Q(delegators__in=[user]),
+                id=data.get('group_id'))
             if part_of_group:
                 if first_page:
                     # get all polls of particular group
@@ -314,7 +314,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                     last_poll_created_at = polls.first().created_at if polls else None
                     response['last_poll_created_at'] = last_poll_created_at
                 else:
-                    polls = Poll.objects.filter(group=group, created_at__lte=last_poll_created_at)\
+                    polls = Poll.objects.filter(group=group, created_at__lte=last_poll_created_at) \
                         .order_by('-created_at') if last_poll_created_at else []
 
                 page_number = data.get('page', 1)  # page number
@@ -327,7 +327,8 @@ class GroupPollViewSet(viewsets.ViewSet):
                 response['previous'] = paginator.page(page_number).has_previous()
 
                 # create serializer for get data page by page
-                serializer = GetGroupPollsListSerializer(paginator.page(page_number), many=True, context={'request': self.request})
+                serializer = GetGroupPollsListSerializer(paginator.page(page_number), many=True,
+                                                         context={'request': self.request})
                 response['data'] = serializer.data
 
                 result = success_response(data=response, message="")
@@ -349,9 +350,10 @@ class GroupPollViewSet(viewsets.ViewSet):
         group = Group.objects.filter(id=data.get('group_id')).first()
         if group:
             # get all the group where logged in user is a participant on that group
-            part_of_group = Group.objects.filter(Q(owners__in=[user]) | Q(admins__in=[user]) | Q(moderators__in=[user]) |
-                                                 Q(members__in=[user]) | Q(delegators__in=[user]),
-                                                 id=data.get('group_id'))
+            part_of_group = Group.objects.filter(
+                Q(owners__in=[user]) | Q(admins__in=[user]) | Q(moderators__in=[user]) |
+                Q(members__in=[user]) | Q(delegators__in=[user]),
+                id=data.get('group_id'))
             if part_of_group:
                 if first_page:
                     # get all polls of particular group
@@ -359,7 +361,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                     last_poll_created_at = polls.first().created_at if polls else None
                     response['last_poll_created_at'] = last_poll_created_at
                 else:
-                    polls = Poll.objects.filter(group=group, created_at__lte=last_poll_created_at)\
+                    polls = Poll.objects.filter(group=group, created_at__lte=last_poll_created_at) \
                         .order_by('-created_at') if last_poll_created_at else []
 
                 page_number = data.get('page', 1)  # page number
@@ -372,7 +374,8 @@ class GroupPollViewSet(viewsets.ViewSet):
                 response['previous'] = paginator.page(page_number).has_previous()
 
                 # create serializer for get data page by page
-                serializer = GetGroupPollsListSerializer(paginator.page(page_number), many=True, context={'request': self.request})
+                serializer = GetGroupPollsListSerializer(paginator.page(page_number), many=True,
+                                                         context={'request': self.request})
                 response['data'] = serializer.data
 
                 result = success_response(data=response, message="")
@@ -393,9 +396,9 @@ class GroupPollViewSet(viewsets.ViewSet):
         def base_query(include_public: bool):
             if include_public:
                 return Q(group__public=True) | \
-                         Q(Q(group__owners__in=[user]) | Q(group__admins__in=[user])
-                           | Q(group__moderators__in=[user]) | Q(group__members__in=[user])
-                           | Q(group__delegators__in=[user]), Q(group__public=False))
+                       Q(Q(group__owners__in=[user]) | Q(group__admins__in=[user])
+                         | Q(group__moderators__in=[user]) | Q(group__members__in=[user])
+                         | Q(group__delegators__in=[user]), Q(group__public=False))
             return Q(Q(group__owners__in=[user]) | Q(group__admins__in=[user])
                      | Q(group__moderators__in=[user]) | Q(group__members__in=[user])
                      | Q(group__delegators__in=[user]))
@@ -422,9 +425,9 @@ class GroupPollViewSet(viewsets.ViewSet):
                 extra_args = dict(type=Poll.Type.MISSION, success=True)
 
             polls = Poll.objects.filter(
-                    base_query(include_public),
-                    **extra_args,
-                    **arguments
+                base_query(include_public),
+                **extra_args,
+                **arguments
             ).order_by('-created_at').distinct()
 
         # Paginate
@@ -495,7 +498,8 @@ class GroupPollViewSet(viewsets.ViewSet):
                 response_data = serializer.data
                 # get all the comment of particular poll
                 poll_comments = PollComments.objects.filter(poll=poll).order_by('-created_at')
-                comment_serializer = GetPollCommentsSerializer(poll_comments, many=True, context={'request': self.request})
+                comment_serializer = GetPollCommentsSerializer(poll_comments, many=True,
+                                                               context={'request': self.request})
                 # add comments and comment count in response data
                 response_data['comments_details'] = dict()
                 response_data['comments_details']['comments'] = comment_serializer.data
@@ -519,7 +523,7 @@ class GroupPollViewSet(viewsets.ViewSet):
             # Check if delegator exists
             delegate_is_valid = group.delegators.filter(
                 id=data.get('delegator_id', -1)
-                ).first()
+            ).first()
             user_is_group_member = Group.objects.filter(Q(owners__in=[user]) | Q(admins__in=[user]) |
                                                         Q(moderators__in=[user]) | Q(members__in=[user]) |
                                                         Q(delegators__in=[user]), id=data.get('group_id'))
@@ -542,8 +546,8 @@ class GroupPollViewSet(viewsets.ViewSet):
         data = request.data
         keep_delegator_votes = data.get('keep_delegator_votes')
         group = Group.objects.filter(Q(owners__in=[user]) | Q(admins__in=[user]) |
-                                                        Q(moderators__in=[user]) | Q(members__in=[user]) |
-                                                        Q(delegators__in=[user]), id=data.get('group_id')).first()
+                                     Q(moderators__in=[user]) | Q(members__in=[user]) |
+                                     Q(delegators__in=[user]), id=data.get('group_id')).first()
 
         if group:
             # Check if delegator exists
@@ -745,12 +749,16 @@ class GroupPollViewSet(viewsets.ViewSet):
 
             user_indexes = [list(g) for k, g in groupby(indexes, lambda x: x.user.id)]
             for user_index in user_indexes:
-                # Check if user is delegate
                 group = poll.group
                 user = user_index[0].user
                 multiplier = 1
-                if user in group.delegators.all():
-                    multiplier = len(PollUserDelegate.objects.filter(delegator=user, group=group).all())
+
+                # Check if user is delegate
+                if group.delegators.filter(pk=user.pk).exists():
+                    multiplier = 0 if get_group_member(user=user.pk, group=group.pk).allow_vote else 1
+                    for user_delegate in PollUserDelegate.objects.filter(delegator=user, group=group).all():
+                        if get_group_member(user=user_delegate.user.pk, group=group.pk).allow_vote:
+                            multiplier += 1
 
                 # Count votes
                 if poll.voting_type == poll.VotingType.CONDORCET:
@@ -884,8 +892,9 @@ class GroupPollViewSet(viewsets.ViewSet):
         poll = get_object_or_404(Poll, pk=pk)
         group_user = get_group_member(user=user.id, group=poll.group.id)
         adapter = PollAdapter(poll)
+        user_is_delegator = poll.group.delegators.filter(pk=user.pk).exists()
 
-        if not group_user.allow_vote:
+        if not group_user.allow_vote and not user_is_delegator:
             return Response(data='User has no permission to vote', status=status.HTTP_400_BAD_REQUEST)
 
         # TODO Bodge
@@ -955,7 +964,9 @@ class GroupPollViewSet(viewsets.ViewSet):
             proposal = PollProposal.objects.filter(id=proposal)
             if proposal:
                 # check the permission of user to access the proposal
-                proposal = proposal.filter(Q(user=user) | Q(poll__group__owners__in=[user]) | Q(poll__group__admins__in=[user]) | Q(poll__group__moderators__in=[user]))
+                proposal = proposal.filter(
+                    Q(user=user) | Q(poll__group__owners__in=[user]) | Q(poll__group__admins__in=[user]) | Q(
+                        poll__group__moderators__in=[user]))
                 if proposal:  # if proposal exist then delete that proposal
                     proposal.delete()
                     result = success_response(data=None, message="Proposal data deleted successfully.")
@@ -975,20 +986,24 @@ class GroupPollViewSet(viewsets.ViewSet):
         counter_proposal = PollProposal.objects.filter(id=data.get('counter_proposal'))
         if counter_proposal:
             # check the user permission
-            counter_proposal = counter_proposal.filter(Q(user=user),  Q(poll__group__owners__in=[user]) | Q(poll__group__admins__in=[user]) | Q(poll__group__moderators__in=[user]) |
-                                                       Q(poll__group__members__in=[user]), Q(poll__group__delegators__in=[user]))
+            counter_proposal = counter_proposal.filter(Q(user=user), Q(poll__group__owners__in=[user]) | Q(
+                poll__group__admins__in=[user]) | Q(poll__group__moderators__in=[user]) |
+                                                       Q(poll__group__members__in=[user]),
+                                                       Q(poll__group__delegators__in=[user]))
             if counter_proposal:
                 adapter = PollAdapter(counter_proposal.poll)
                 # serializer for create counter proposal comment
                 serializer = adapter.comment_create_serializer(data=data)
                 if serializer.is_valid():
                     comment = adapter.comments.objects.create(comment=serializer.validated_data.get('comment'),
-                                                              counter_proposal=serializer.validated_data.get('counter_proposal'),
+                                                              counter_proposal=serializer.validated_data.get(
+                                                                  'counter_proposal'),
                                                               reply_to=serializer.validated_data.get('reply_to'),
                                                               created_by=user, modified_by=user)
                     comment.save()
                     serializer = adapter.proposal_detail_serializer(comment.proposal, context={'request': self.request})
-                    result = success_response(data=serializer.data, message="Create counter proposal comment successfully.")
+                    result = success_response(data=serializer.data,
+                                              message="Create counter proposal comment successfully.")
                     return Created(result)
                 result = failed_response(data=serializer.errors, message="")
                 return BadRequest(result)
@@ -1012,7 +1027,8 @@ class GroupPollViewSet(viewsets.ViewSet):
                 counter_proposal_comment.edited = True
                 counter_proposal_comment.save()
 
-                serializer = GetPollCounterProposalDetailsSerializer(counter_proposal_comment.proposal, context={'request': self.request})
+                serializer = GetPollCounterProposalDetailsSerializer(counter_proposal_comment.proposal,
+                                                                     context={'request': self.request})
                 result = success_response(data=serializer.data, message="Counter proposal comment edited successfully.")
                 return Created(result)
             result = failed_response(data=None, message="Only comment creator, owner of group, admins or moderators"
@@ -1033,8 +1049,10 @@ class GroupPollViewSet(viewsets.ViewSet):
             # check user permission and delete comment
             if comment.created_by == user or user in group.owners.all() or user in group.admins.all() or user in group.moderators.all():
                 comment.delete()
-                serializer = GetPollCounterProposalDetailsSerializer(counter_proposal, context={'request': self.request})
-                result = success_response(data=serializer.data, message="Counter Proposal comment deleted successfully.")
+                serializer = GetPollCounterProposalDetailsSerializer(counter_proposal,
+                                                                     context={'request': self.request})
+                result = success_response(data=serializer.data,
+                                          message="Counter Proposal comment deleted successfully.")
                 return Created(result)
 
             result = failed_response(data=None, message="Only comment creator, owner of group, admins or moderator can "
@@ -1058,7 +1076,8 @@ class GroupPollViewSet(viewsets.ViewSet):
             else:
                 counter_proposal_comment.likes.remove(user)
                 counter_proposal_comment.save()
-            serializer = GetPollCounterProposalDetailsSerializer(counter_proposal_comment.proposal, context={'request': self.request})
+            serializer = GetPollCounterProposalDetailsSerializer(counter_proposal_comment.proposal,
+                                                                 context={'request': self.request})
             result = success_response(data=serializer.data, message="Comment deleted successfully.")
             return Created(result)
         result = failed_response(data=None, message="Comment does not exist.")
