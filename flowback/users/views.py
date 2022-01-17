@@ -1,4 +1,3 @@
-
 import string
 import random
 import datetime
@@ -20,7 +19,8 @@ from django.db.models.functions import Concat
 from flowback.response import Created, BadRequest
 from flowback.response import Ok
 from flowback.response_handler import success_response, failed_response
-from flowback.users.models import Group, GroupMembers, OnboardUser, GroupDocs, GroupRequest, FriendChatMessage, GroupChatMessage
+from flowback.users.models import Group, GroupMembers, OnboardUser, GroupDocs, GroupRequest, FriendChatMessage, \
+    GroupChatMessage
 from flowback.users.models import User, PasswordReset
 from flowback.users.models import Country, State, City
 from flowback.users.models import Friends
@@ -33,11 +33,11 @@ from flowback.users.serializer import UserSerializer, SimpleUserSerializer, User
     GroupDetailsSerializer, CreateGroupDocSerializer, GroupDocsListSerializer, GetGroupJoinRequestListSerializer, \
     SearchGroupSerializer, GetAllCountrySerializer, GetAllStatesByCountries, GetAllCityByStateSerializer, \
     ResetPasswordSerializer, ResetPasswordVerifySerializer
-from flowback.users.serializer import CreateFriendRequestSerializer, GetAllFriendRequestSerializer, GetAllFriendsRoomSerializer
+from flowback.users.serializer import CreateFriendRequestSerializer, GetAllFriendRequestSerializer, \
+    GetAllFriendsRoomSerializer
 from flowback.polls.serializer import SearchPollSerializer
 from flowback.users.services import group_member_update, group_user_permitted
 from settings.base import EMAIL_HOST_USER, DEBUG
-
 
 
 class UserViewSet(viewsets.ViewSet):
@@ -118,7 +118,7 @@ class UserViewSet(viewsets.ViewSet):
         verification.user.set_password(password)
         verification.user.save()
         return Response(status=status.HTTP_200_OK)
-        
+
     @decorators.action(detail=False, methods=['post'], url_path="sign_up_two")
     def sign_up_two(self, request, *args, **kwargs):
         data = request.data
@@ -260,7 +260,6 @@ class UserLogin(ObtainAuthToken):
 
 
 class UserLogout(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -288,7 +287,8 @@ class UserGroupViewSet(viewsets.ViewSet):
                                                          title=serializer.validated_data.get('title'),
                                                          description=serializer.validated_data.get('description'),
                                                          public=serializer.validated_data.get('public'),
-                                                         members_request=serializer.validated_data.get('members_request'),
+                                                         members_request=serializer.validated_data.get(
+                                                             'members_request'),
                                                          poll_approval=serializer.validated_data.get('poll_approval'),
                                                          country=serializer.validated_data.get('country'),
                                                          city=serializer.validated_data.get('city'),
@@ -336,7 +336,6 @@ class UserGroupViewSet(viewsets.ViewSet):
     #         return BadRequest(result)
     #     result = failed_response(data={}, message="Group is does not exist.")
     #     return BadRequest(result)
-
 
     @decorators.action(detail=False, methods=['post'], url_path="update_group_member_type")
     def update_group_member_type(self, request, *args, **kwargs):
@@ -544,7 +543,8 @@ class UserGroupViewSet(viewsets.ViewSet):
             [i.update({"user_type": 'Delegator'}) for i in serializer.data['delegators']]
 
             # return all participants and count of it in reponse
-            data['participant'] = serializer.data['owners'] + serializer.data['admins'] + serializer.data['moderators'] + \
+            data['participant'] = serializer.data['owners'] + serializer.data['admins'] + serializer.data[
+                'moderators'] + \
                                   serializer.data['members'] + serializer.data['delegators']
             data['total_participant'] = len(data['participant'])
 
@@ -580,9 +580,10 @@ class UserGroupViewSet(viewsets.ViewSet):
         if sort_by == 'new':
             groups = groups.order_by('-created_at')
         elif sort_by == 'popular':
-            groups = groups.annotate(total_mmbs=Count('owners') + Count('moderators') + Count('members')).order_by('-total_mmbs')
+            groups = groups.annotate(total_mmbs=Count('owners') + Count('moderators') + Count('delegators') +
+                                                Count('members')).order_by('-total_mmbs')
         elif sort_by == 'rising':
-            groups = groups # TODO: need to discuss
+            groups = groups  # TODO: need to discuss
 
         page_number = data.get('page', 1)  # page number
         page_size = data.get('page_size', 10)  # size of result per page
@@ -690,7 +691,8 @@ class UserGroupViewSet(viewsets.ViewSet):
         request_obj = GroupRequest.objects.filter(group=data.get('group'), participant=data.get('participant')).first()
         if request_obj:
             # serializer for accept or reject the group join request
-            serializer = UpdateGroupRequestSerializer(request_obj, data=data, partial=True, context={'request': self.request})
+            serializer = UpdateGroupRequestSerializer(request_obj, data=data, partial=True,
+                                                      context={'request': self.request})
             if serializer.is_valid(raise_exception=False):
                 status = serializer.validated_data.get('status')
                 # if accept the request then add that user in requested group
@@ -739,7 +741,8 @@ class UserGroupViewSet(viewsets.ViewSet):
         # check the role of user in group
         if user in group.owners.all() or user in group.admins.all():
             # get doc object filter by group id and doc id
-            grp_doc = GroupDocs.objects.filter(group=request.query_params['group'], id=request.query_params['doc']).first()
+            grp_doc = GroupDocs.objects.filter(group=request.query_params['group'],
+                                               id=request.query_params['doc']).first()
             if grp_doc:
                 # if object is found then delete that object
                 grp_doc.delete()
@@ -780,7 +783,8 @@ class UserGroupViewSet(viewsets.ViewSet):
                     response['last_created_at'] = last_created_at
                 else:
                     users = User.objects.annotate(full_name=Concat('first_name', V(' '), 'last_name')). \
-                        filter(full_name__icontains=search_value).filter(created_at__lte=last_created_at).order_by('-created_at') if last_created_at else []
+                        filter(full_name__icontains=search_value).filter(created_at__lte=last_created_at).order_by(
+                        '-created_at') if last_created_at else []
                 message = "Get all users list successfully with search value."
             else:
                 if first_page:
@@ -788,7 +792,8 @@ class UserGroupViewSet(viewsets.ViewSet):
                     last_created_at = users.first().created_at if users else None
                     response['last_created_at'] = last_created_at
                 else:
-                    users = User.objects.filter(created_at__lte=last_created_at).order_by('-created_at') if last_created_at else []
+                    users = User.objects.filter(created_at__lte=last_created_at).order_by(
+                        '-created_at') if last_created_at else []
                 message = "Get all users list successfully."
             page_number = data.get('page', 1)  # page number
             page_size = data.get('page_size', 10)  # size of result per page
@@ -811,23 +816,24 @@ class UserGroupViewSet(viewsets.ViewSet):
             if search_value:
                 if first_page:
                     # get all groups objects as per search query passed in search box
-                    groups = Group.objects.filter(title__icontains=search_value).annotate(total_mmbs=Count('owners') + Count('moderators') + Count('members')).order_by('-total_mmbs')
+                    groups = Group.objects.filter(title__icontains=search_value).annotate(
+                        total_mmbs=Count('owners') + Count('moderators') + Count('members')).order_by('-total_mmbs')
                     last_created_at = groups.first().created_at if groups else None
                     response['last_created_at'] = last_created_at
                 else:
-                    groups = Group.objects.filter(title__icontains=search_value).filter(created_at__lte=last_created_at)\
-                        .annotate(total_mmbs=Count('owners') + Count('moderators') + Count('members'))\
+                    groups = Group.objects.filter(title__icontains=search_value).filter(created_at__lte=last_created_at) \
+                        .annotate(total_mmbs=Count('owners') + Count('moderators') + Count('members')) \
                         .order_by('-total_mmbs') if last_created_at else []
                 message = "Get all groups list successfully with search value."
             else:
                 if first_page:
-                    groups = Group.objects.annotate(total_mmbs=Count('owners') + Count('moderators') + Count('members'))\
+                    groups = Group.objects.annotate(total_mmbs=Count('owners') + Count('moderators') + Count('members')) \
                         .order_by('-total_mmbs')
                     last_created_at = groups.first().created_at if groups else None
                     response['last_created_at'] = last_created_at
                 else:
-                    groups = Group.objects.filter(created_at__lte=last_created_at)\
-                        .annotate(total_mmbs=Count('owners') + Count('moderators') + Count('members'))\
+                    groups = Group.objects.filter(created_at__lte=last_created_at) \
+                        .annotate(total_mmbs=Count('owners') + Count('moderators') + Count('members')) \
                         .order_by('-total_mmbs') if last_created_at else []
                 message = "Get all groups list successfully."
 
@@ -841,7 +847,8 @@ class UserGroupViewSet(viewsets.ViewSet):
             response['previous'] = paginator.page(page_number).has_previous()
 
             # serializer for get basic details of group page by page for search query
-            serializer = SearchGroupSerializer(paginator.page(page_number), many=True, context={"request": self.request})
+            serializer = SearchGroupSerializer(paginator.page(page_number), many=True,
+                                               context={"request": self.request})
 
             response['data'] = serializer.data
             result = success_response(data=response, message=message)
@@ -868,7 +875,8 @@ class UserGroupViewSet(viewsets.ViewSet):
                                                   Q(group__delegators__in=[user]), group__public=False)
                     ).distinct().filter(created_at__lte=last_created_at) if last_created_at else []
                     # filter polls by search query passed in search box
-                    polls = polls.filter(title__icontains=search_value).order_by('-created_at') if last_created_at else []
+                    polls = polls.filter(title__icontains=search_value).order_by(
+                        '-created_at') if last_created_at else []
                 message = "Get all poll list successfully with search value."
             else:
                 if first_page:
@@ -996,7 +1004,7 @@ class FriendsViewSet(viewsets.ViewSet):
         # serializer for create object of friend request
         serializer = CreateFriendRequestSerializer(data=data)
         if serializer.is_valid():
-            friend = Friends.objects.filter(user_1=user, user_2=data.get('user_2')) or Friends.objects.filter\
+            friend = Friends.objects.filter(user_1=user, user_2=data.get('user_2')) or Friends.objects.filter \
                 (user_2=user, user_1=data.get('user_2'))
             # if request is not sent yet then create the friend request
             if not friend:
@@ -1031,8 +1039,9 @@ class FriendsViewSet(viewsets.ViewSet):
             response['last_request_sent_at'] = last_sent_at
         else:
             # get all friend request of logged in user
-            friends_requests = Friends.objects.filter(user_2=user, request_accept=False).\
-                filter(request_sent_at__lte=last_request_sent_at).order_by('-request_sent_at') if last_request_sent_at else []
+            friends_requests = Friends.objects.filter(user_2=user, request_accept=False). \
+                filter(request_sent_at__lte=last_request_sent_at).order_by(
+                '-request_sent_at') if last_request_sent_at else []
 
         page_number = data.get('page', 1)  # page number
         page_size = data.get('page_size', 10)  # size of result page by page
@@ -1092,12 +1101,15 @@ class FriendsViewSet(viewsets.ViewSet):
         if not last_message_id:
             # get all chat message with friend filtered by friend id
             messages = FriendChatMessage.objects.filter(Q(sender=user, receiver=data.get('friend_id')) |
-                                                        Q(sender=data.get('friend_id'), receiver=user)).order_by('-created_at')
+                                                        Q(sender=data.get('friend_id'), receiver=user)).order_by(
+                '-created_at')
             # response['last_message_id'] = messages.first().id if messages else None
         else:
             # get all chat message with friend filtered by friend id
-            messages = FriendChatMessage.objects.filter(Q(id__lt=last_message_id), Q(sender=user, receiver=data.get('friend_id')) |
-                                                        Q(sender=data.get('friend_id'), receiver=user)).order_by('-created_at') if last_message_id else []
+            messages = FriendChatMessage.objects.filter(Q(id__lt=last_message_id),
+                                                        Q(sender=user, receiver=data.get('friend_id')) |
+                                                        Q(sender=data.get('friend_id'), receiver=user)).order_by(
+                '-created_at') if last_message_id else []
 
         page_number = data.get('page', 1)  # page number
         page_size = data.get('page_size', 25)  # size of result page by page
@@ -1109,7 +1121,8 @@ class FriendsViewSet(viewsets.ViewSet):
         response['previous'] = paginator.page(page_number).has_previous()
 
         serializer = GetChatMessagesSerializer(paginator.page(page_number), many=True, context={'request': self.request,
-                                                                                                'friend_id': data.get('friend_id')})
+                                                                                                'friend_id': data.get(
+                                                                                                    'friend_id')})
         # return all chat messages with friend and count of unread message
         response['data'] = dict()
         response['data']['message'] = serializer.data[::-1]
@@ -1155,7 +1168,8 @@ class GroupChatViewSet(viewsets.ViewSet):
         if not last_message_id:
             messages = GroupChatMessage.objects.filter(group=group).order_by('-created_at')
         else:
-            messages = GroupChatMessage.objects.filter(id__lt=last_message_id, group=group).order_by('-created_at') if last_message_id else []
+            messages = GroupChatMessage.objects.filter(id__lt=last_message_id, group=group).order_by(
+                '-created_at') if last_message_id else []
 
         page_number = data.get('page', 1)
         page_size = data.get('page_size', 25)
@@ -1166,7 +1180,8 @@ class GroupChatViewSet(viewsets.ViewSet):
         response['next'] = paginator.page(page_number).has_next()
         response['previous'] = paginator.page(page_number).has_previous()
 
-        serializer = GetGroupChatMessagesSerializer(paginator.page(page_number), many=True, context={'request': self.request})
+        serializer = GetGroupChatMessagesSerializer(paginator.page(page_number), many=True,
+                                                    context={'request': self.request})
         response['data'] = dict()
         response['data']['message'] = serializer.data[::-1]
         unread_messages = GroupChatMessage.objects.filter(group=group).exclude(seen_by__in=[user])
