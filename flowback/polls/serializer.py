@@ -359,7 +359,8 @@ class PollProposalGetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollProposal
-        fields = ('id', 'poll', 'proposal', 'user', 'file', 'final_score', 'created_at', 'comments_details')
+        fields = ('id', 'poll', 'proposal', 'user', 'file', 'final_score_positive', 'final_score_negative',
+                  'created_at', 'comments_details')
 
     def get_comments_details(self, obj):
         proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by(
@@ -378,7 +379,8 @@ class PollProposalEventGetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollProposalEvent
-        fields = ('id', 'poll', 'proposal', 'date', 'user', 'final_score', 'created_at', 'comments_details')
+        fields = ('id', 'poll', 'proposal', 'date', 'user', 'final_score_positive', 'final_score_negative',
+                  'created_at', 'comments_details')
 
     # TODO Add Comment Support For Events
     def get_comments_details(self, obj):
@@ -459,7 +461,8 @@ class GetPollCounterProposalDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollProposal
-        fields = ('id', 'poll', 'proposal', 'user', 'file', 'final_score', 'created_at', 'comments_details')
+        fields = ('id', 'poll', 'proposal', 'user', 'file', 'final_score_positive', 'final_score_negative',
+                  'created_at', 'comments_details')
 
     def get_comments_details(self, obj):
         counter_proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by('-created_at')
@@ -476,7 +479,8 @@ class GetPollCounterProposalEventDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollProposalEvent
-        fields = ('id', 'poll', 'proposal', 'date', 'user', 'file', 'final_score', 'created_at', 'comments_details')
+        fields = ('id', 'poll', 'proposal', 'date', 'user', 'file', 'final_score_positive', 'final_score_negative',
+                  'created_at', 'comments_details')
 
     def get_comments_details(self, obj):
         counter_proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by('-created_at')
