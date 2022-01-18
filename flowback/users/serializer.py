@@ -105,8 +105,8 @@ class SimpleUserSerializer(serializers.ModelSerializer):
         user = self.get_user()
         if user is None or user.is_anonymous:
             return 'not friend'
-        if Friends.objects.filter(user_1=user, user_2=obj.id, request_accept=True) or Friends.objects.filter\
-                (user_2=user, user_1=obj.id, request_accept=True):
+        if Friends.objects.filter(user_1=user, user_2=obj.id, request_accept=True) or Friends.objects.filter \
+                    (user_2=user, user_1=obj.id, request_accept=True):
             return "friend"
         elif Friends.objects.filter(user_1=user, user_2=obj.id, request_accept=False):
             return 'requested'
@@ -164,6 +164,7 @@ class SearchGroupSerializer(serializers.ModelSerializer):
         else:
             return ''
 
+
 class MyGroupSerializer(serializers.ModelSerializer):
     user_type = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
@@ -174,9 +175,10 @@ class MyGroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Group
-        fields = ('id', 'created_by', 'title', 'description', 'image', 'cover_image', 'tags', 'country', 'city', 'public',
-                  'members_request', 'poll_approval', 'active', 'deleted', 'total_members', 'group_join_status', 'user_type',
-                  'room_name', 'created_at')
+        fields = (
+        'id', 'created_by', 'title', 'description', 'image', 'cover_image', 'tags', 'country', 'city', 'public',
+        'members_request', 'poll_approval', 'active', 'deleted', 'total_members', 'group_join_status', 'user_type',
+        'room_name', 'created_at')
 
     def get_city(self, obj):
         if obj.city and obj.city != 'undefined':
@@ -198,7 +200,8 @@ class MyGroupSerializer(serializers.ModelSerializer):
         return obj.tag.names()
 
     def get_total_members(self, obj):
-        return len(obj.owners.all()) + len(obj.moderators.all()) + len(obj.members.all())
+        return len(obj.owners.all()) + len(obj.admins.all()) + len(obj.moderators.all()) + \
+               len(obj.delegators.all()) + len(obj.members.all())
 
     def get_group_join_status(self, obj):
         request = self.context.get("request")
@@ -233,6 +236,7 @@ class MyGroupSerializer(serializers.ModelSerializer):
         else:
             return ''
 
+
 class GroupParticipantSerializer(serializers.ModelSerializer):
     owners = SimpleUserSerializer(read_only=True, many=True)
     admins = SimpleUserSerializer(read_only=True, many=True)
@@ -256,8 +260,10 @@ class GroupDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Group
-        fields = ('id', 'created_by', 'title', 'description', 'image', 'cover_image', 'user_type', 'tags', 'country', 'city',
-                  'public', 'members_request', 'poll_approval', 'active', 'deleted', 'total_members', 'room_name', 'group_join_status')
+        fields = (
+        'id', 'created_by', 'title', 'description', 'image', 'cover_image', 'user_type', 'tags', 'country', 'city',
+        'public', 'members_request', 'poll_approval', 'active', 'deleted', 'total_members', 'room_name',
+        'group_join_status')
 
     def get_city(self, obj):
         if obj.city and obj.city != 'undefined':
@@ -358,6 +364,7 @@ class OnboardUserFirstSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     screen_name = serializers.CharField(required=True)
 
+
 class OnboardUserSecondSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     verification_code = serializers.IntegerField(required=True)
@@ -431,7 +438,8 @@ class GetAllFriendsRoomSerializer(serializers.ModelSerializer):
         else:
             return None
 
-        return {'id': friend.id, 'full_name': "{} {}".format(friend.first_name, friend.last_name), 'image': friend.image.url if friend.image else ''}
+        return {'id': friend.id, 'full_name': "{} {}".format(friend.first_name, friend.last_name),
+                'image': friend.image.url if friend.image else ''}
 
 
 class GetChatMessagesSerializer(serializers.ModelSerializer):
@@ -452,5 +460,3 @@ class GetAllGroupRoomsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
         fields = ('id', 'title', 'room_name', 'image')
-
-
