@@ -177,7 +177,7 @@ class PollProposalEvent(TimeStampedModel):
     final_score_negative = models.IntegerField(null=True, blank=True)
 
     class Meta:
-        unique_together = (('poll', 'user'), ('poll', 'date'))
+        unique_together = ('poll', 'date')
 
 
 class PollProposalIndex(TimeStampedModel):
