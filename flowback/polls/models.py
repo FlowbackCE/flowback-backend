@@ -97,6 +97,7 @@ class Poll(TimeStampedModel):
     end_time = models.DateTimeField(_('End time'))
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='poll_created_by')
     modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='poll_modified_by')
+    total_participants = models.IntegerField(blank=True, null=True)
 
 
 class PollUserDelegate(TimeStampedModel):
@@ -151,7 +152,8 @@ class PollProposal(TimeStampedModel):
     )
 
     proposal = models.TextField()
-    final_score = models.IntegerField(null=True, blank=True)
+    final_score_positive = models.IntegerField(null=True, blank=True)
+    final_score_negative = models.IntegerField(null=True, blank=True)
     file = models.FileField(upload_to='groups/polls/proposal/', blank=True, null=True)
 
 

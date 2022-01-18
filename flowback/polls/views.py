@@ -24,7 +24,7 @@ from flowback.response import Ok
 from flowback.notifications.models import Notification
 from flowback.notifications.services import notification_create, notification_update, notification_delete
 from flowback.response_handler import success_response, failed_response
-from flowback.users.models import Group, OnboardUser
+from flowback.users.models import Group, OnboardUser, GroupMembers
 from flowback.users.models import User
 from flowback.polls.models import Poll, PollDocs, PollVotes, PollComments, PollBookmark, \
     PollProposal, PollProposalEvent, PollProposalComments, PollProposalIndex, \
@@ -741,11 +741,11 @@ class GroupPollViewSet(viewsets.ViewSet):
         if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
             counter_proposals = adapter.proposal.objects.filter(poll=poll).all()
             indexes = adapter.index.objects.filter(proposal__poll=poll)
-            counter = {key.id: 0 for key in counter_proposals}
+            counter_positive, counter_negative = [{key.id: 0 for key in counter_proposals}] * 2
 
             # Reset all counter proposals final score
             for key in range(len(counter_proposals)):
-                counter_proposals[key].final_score = 0
+                counter_proposals[key].final_score_positive = 0
 
             user_indexes = [list(g) for k, g in groupby(indexes, lambda x: x.user.id)]
             for user_index in user_indexes:
@@ -766,7 +766,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                     # negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
 
                     for sub, index in enumerate(positive):
-                        counter[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
+                        counter_positive[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
 
                     # for sub, index in enumerate(negative):
                     #    counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
@@ -776,25 +776,26 @@ class GroupPollViewSet(viewsets.ViewSet):
                     negative = [x for x in user_index if not x.is_positive]
 
                     for index in positive:
-                        counter[index.proposal_id] += 1 * multiplier
+                        counter_positive[index.proposal_id] += multiplier
 
                     for index in negative:
-                        counter[index.proposal_id] -= 1 * multiplier
+                        counter_negative[index.proposal_id] += multiplier
 
             # Insert counter to proposals
             for key, counter_proposal in enumerate(counter_proposals):
-                counter_proposals[key].final_score = counter[counter_proposal.id]
+                counter_proposals[key].final_score_positive = counter_positive[counter_proposal.id]
+                counter_proposals[key].final_score_negative = counter_negative[counter_proposal.id]
 
             # Apply
-            adapter.proposal.objects.bulk_update(counter_proposals, ['final_score'])
+            adapter.proposal.objects.bulk_update(
+                counter_proposals,
+                ['final_score_positive', 'final_score_negative']
+            )
 
-            # Poll Type Checks
-            if poll.type == Poll.Type.MISSION:
-                top = counter_proposals.order_by('-final_score').first()
-                success = bool(top and top.type != adapter.proposal.Type.DROP and top.final_score)
-                Poll.objects.filter(id=poll.id).update(success=success)
-
-            Poll.objects.filter(id=poll.id).update(votes_counted=True)
+            Poll.objects.filter(id=poll.id).update(
+                votes_counted=True,
+                total_participants=len(GroupMembers.objects.filter(group=poll.group, allow_vote=True))
+            )
 
     # TODO improve safety
     @decorators.action(detail=False, methods=['post'], url_path="add_proposal")
