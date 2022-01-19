@@ -86,8 +86,7 @@ class Poll(TimeStampedModel):
         default=VotingType.CONDORCET
     )
 
-    top_proposal = models.ForeignKey('polls.PollProposal', related_name="poll_top_proposal",
-                                     on_delete=models.DO_NOTHING, null=True, blank=True)
+    top_proposal = models.IntegerField(null=True, blank=True)
     success = models.BooleanField(default=False)
     files = models.ManyToManyField(PollDocs, related_name='poll_documents', blank=True, null=True)
     accepted = models.BooleanField(default=True)
