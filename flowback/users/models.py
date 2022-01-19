@@ -166,7 +166,7 @@ class Group(TimeStampedModel):
 class GroupMembers(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
-    allow_vote = models.BooleanField(default=True)
+    allow_vote = models.BooleanField(default=False)
 
     class Meta:
         unique_together = 'user', 'group'

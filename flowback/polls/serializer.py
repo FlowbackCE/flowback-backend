@@ -99,11 +99,13 @@ class GetGroupPollsListSerializer(serializers.ModelSerializer):
     comments_details = serializers.SerializerMethodField()
     discussion = serializers.SerializerMethodField()
     voting_status = serializers.SerializerMethodField()
+    top_proposal = serializers.SerializerMethodField()
 
     class Meta:
         model = Poll
-        fields = ('id', 'group', 'title', 'description', 'tags', 'files', 'accepted', 'accepted_at',
-                  'end_time', 'created_at', 'created_by', 'comments_details', 'discussion', 'voting_status')
+        fields = ('id', 'group', 'title', 'description', 'tags', 'files', 'accepted', 'accepted_at', 'top_proposal',
+                  'end_time', 'created_at', 'created_by', 'comments_details', 'discussion', 'voting_status',
+                  'total_participants')
 
     def get_group_details(self, obj):
         grp_serializers = GroupDetailPollListSerializer(obj.group, context={'request': self.context.get("request")})
@@ -140,6 +142,14 @@ class GetGroupPollsListSerializer(serializers.ModelSerializer):
         if vote:
             return vote.vote_type
         return ""
+
+    def get_top_proposal(self, obj):
+        if obj.type == Poll.Type.EVENT:
+            if top := PollProposalEvent.objects.filter(id=obj.top_proposal).first():
+                return PollProposalEventGetSerializer(top).data
+        else:
+            if top := PollProposal.objects.filter(id=obj.top_proposal).first():
+                return PollProposalGetSerializer(top).data
 
 
 class DelegatorSerializer(serializers.ModelSerializer):
@@ -181,12 +191,13 @@ class GroupPollDetailsSerializer(serializers.ModelSerializer):
     group = serializers.SerializerMethodField('get_group_details')
     voting_type = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
+    top_proposal = serializers.SerializerMethodField()
 
     class Meta:
         model = Poll
         fields = ('id', 'group', 'user_type', 'title', 'description', 'tags', 'files', 'accepted', 'accepted_at',
                   'end_time', 'created_at', 'modified_at', 'created_by', 'modified_by', 'vote_details', "voting_status",
-                  "discussion", 'comments_details', 'type', 'voting_type')
+                  "discussion", 'comments_details', 'type', 'voting_type', 'top_proposal', 'total_participants')
 
     def get_voting_type(self, obj):
         return obj.get_voting_type_display()
@@ -270,6 +281,14 @@ class GroupPollDetailsSerializer(serializers.ModelSerializer):
         data['comments'] = serializer.data
         data['total_comments'] = len(poll_comments)
         return data
+
+    def get_top_proposal(self, obj):
+        if obj.type == Poll.Type.EVENT:
+            if top := PollProposalEvent.objects.filter(id=obj.top_proposal).first():
+                return PollProposalEventGetSerializer(top).data
+        else:
+            if top := PollProposal.objects.filter(id=obj.top_proposal).first():
+                return PollProposalGetSerializer(top).data
 
 
 class GetPendingPollListSerializer(serializers.ModelSerializer):
