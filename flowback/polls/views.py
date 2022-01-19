@@ -7,7 +7,7 @@ from random import randint
 
 import rest_framework.exceptions
 from django.core.mail import send_mail
-from django.db.models import Q
+from django.db.models import Q, Sum, F
 from rest_framework import decorators, viewsets, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -793,14 +793,15 @@ class GroupPollViewSet(viewsets.ViewSet):
                 ['final_score_positive', 'final_score_negative']
             )
 
-            success = True
-            if poll.type == Poll.Type.EVENT:
-                top = counter_proposals.order_by('-final_score_positive').first()
-                success = bool(top and top.type != adapter.proposal.Type.DROP)
+            top = counter_proposals.annotate(
+                final_score=Sum(F('final_score_positive') - F('final_score_negative'))
+            ).order_by('-final_score').first()
+            success = bool(top and top.type != adapter.proposal.Type.DROP)
 
             Poll.objects.filter(id=poll.id).update(
                 votes_counted=True,
                 success=success,
+                top_proposal=top.id if top else None,
                 total_participants=len(GroupMembers.objects.filter(group=poll.group, allow_vote=True))
             )
 
