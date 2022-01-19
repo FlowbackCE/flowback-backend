@@ -95,12 +95,13 @@ class GroupPollViewSet(viewsets.ViewSet):
 
                 poll.save()
 
-                # if poll.type == Poll.Type.MISSION:
-                #    PollProposal.objects.create(
-                #        poll=poll,
-                #        type=PollProposal.Type.DROP,
-                #        proposal="Drop this mission"
-                #    )
+                if poll.type == Poll.Type.EVENT:
+                   PollProposalEvent.objects.create(
+                       poll=poll,
+                       type=PollProposal.Type.DROP,
+                       proposal="Drop this mission",
+                       date=datetime.datetime.now()
+                   )
 
                 if poll.accepted:
                     notification_create(
@@ -792,8 +793,14 @@ class GroupPollViewSet(viewsets.ViewSet):
                 ['final_score_positive', 'final_score_negative']
             )
 
+            success = True
+            if poll.type == Poll.Type.EVENT:
+                top = counter_proposals.order_by('-final_score_positive').first()
+                success = bool(top and top.type != adapter.proposal.Type.DROP)
+
             Poll.objects.filter(id=poll.id).update(
                 votes_counted=True,
+                success=success,
                 total_participants=len(GroupMembers.objects.filter(group=poll.group, allow_vote=True))
             )
 
