@@ -51,7 +51,7 @@ def group_member_update(
         user: int = None,
         target: int,
         group: int,
-        allow_vote: bool = False
+        allow_vote: bool = True
 ) -> bool:
 
     if user:
