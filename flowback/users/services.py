@@ -1,8 +1,11 @@
+from django.core.mail import send_mail
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from flowback.users.models import User, Group, GroupMembers
 from flowback.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
+
+from settings.base import EMAIL_HOST_USER
 
 
 def group_user_permitted(
@@ -60,4 +63,23 @@ def group_member_update(
         group_id=group,
         defaults=dict(allow_vote=allow_vote)
     )
+    return True
+
+
+def mail_all_group_members(
+        *,
+        user: int,
+        group: int,
+        subject: str,
+        message: str
+) -> bool:
+
+    group_user_permitted(user=user, group=group, permission='member')
+    user = get_object_or_404(user=user)
+    mailing_list = GroupMembers.objects.filter(group_id=group).values_list('user__email', flat=True).remove(user.email)
+    send_mail(subject=subject,
+              message=message,
+              from_email=EMAIL_HOST_USER,
+              recipient_list=mailing_list)
+
     return True
