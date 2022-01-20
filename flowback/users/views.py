@@ -401,8 +401,8 @@ class UserGroupViewSet(viewsets.ViewSet):
         result = failed_response(data={}, message="Group is not exist.")
         return BadRequest(result)
 
-    @decorators.action(detail=True, methods=['post', 'update'], url_path="group_member_update")
-    def mail_all_group_members(self, request, pk):
+    @decorators.action(detail=True, methods=['post', 'update'], url_path="mail_all_group_members")
+    def mail_all_group_members_api(self, request, pk):
         class InputSerializer(serializers.Serializer):
             subject = serializers.CharField()
             message = serializers.CharField()

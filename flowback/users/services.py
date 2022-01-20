@@ -75,7 +75,7 @@ def mail_all_group_members(
 ) -> bool:
 
     group_user_permitted(user=user, group=group, permission='member')
-    user = get_object_or_404(user=user)
+    user = get_object_or_404(User, id=user)
     mailing_list = GroupMembers.objects.filter(group_id=group).values_list('user__email', flat=True).remove(user.email)
     send_mail(subject=subject,
               message=message,
