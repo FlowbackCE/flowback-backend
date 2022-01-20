@@ -742,11 +742,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
             counter_proposals = adapter.proposal.objects.filter(poll=poll).all()
             indexes = adapter.index.objects.filter(proposal__poll=poll)
-            counter_positive, counter_negative = [{key.id: 0 for key in counter_proposals}] * 2
-
-            # Reset all counter proposals final score
-            for key in range(len(counter_proposals)):
-                counter_proposals[key].final_score_positive = 0
+            counter = {key.id: [0, 0] for key in counter_proposals}
 
             user_indexes = [list(g) for k, g in groupby(indexes, lambda x: x.user.id)]
             for user_index in user_indexes:
@@ -767,7 +763,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                     # negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
 
                     for sub, index in enumerate(positive):
-                        counter_positive[index.proposal_id] += (len(counter_proposals) - sub) * multiplier
+                        counter[index.proposal_id][0] += (len(counter_proposals) - sub) * multiplier
 
                     # for sub, index in enumerate(negative):
                     #    counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
@@ -777,15 +773,15 @@ class GroupPollViewSet(viewsets.ViewSet):
                     negative = [x for x in user_index if not x.is_positive]
 
                     for index in positive:
-                        counter_positive[index.proposal_id] += multiplier
+                        counter[index.proposal_id][0] += multiplier
 
                     for index in negative:
-                        counter_negative[index.proposal_id] += multiplier
+                        counter[index.proposal_id][1] += multiplier
 
             # Insert counter to proposals
             for key, counter_proposal in enumerate(counter_proposals):
-                counter_proposals[key].final_score_positive = counter_positive[counter_proposal.id]
-                counter_proposals[key].final_score_negative = counter_negative[counter_proposal.id]
+                counter_proposals[key].final_score_positive = counter[counter_proposal.id][0]
+                counter_proposals[key].final_score_negative = counter[counter_proposal.id][1]
 
             # Apply
             adapter.proposal.objects.bulk_update(
