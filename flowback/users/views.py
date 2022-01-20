@@ -36,7 +36,7 @@ from flowback.users.serializer import UserSerializer, SimpleUserSerializer, User
 from flowback.users.serializer import CreateFriendRequestSerializer, GetAllFriendRequestSerializer, \
     GetAllFriendsRoomSerializer
 from flowback.polls.serializer import SearchPollSerializer
-from flowback.users.services import group_member_update, group_user_permitted
+from flowback.users.services import group_member_update, group_user_permitted, mail_all_group_members
 from settings.base import EMAIL_HOST_USER, DEBUG
 
 
@@ -400,6 +400,22 @@ class UserGroupViewSet(viewsets.ViewSet):
             return BadRequest(result)
         result = failed_response(data={}, message="Group is not exist.")
         return BadRequest(result)
+
+    @decorators.action(detail=True, methods=['post', 'update'], url_path="mail_all_group_members")
+    def mail_all_group_members_api(self, request, pk):
+        class InputSerializer(serializers.Serializer):
+            subject = serializers.CharField()
+            message = serializers.CharField()
+
+        user = request.user
+        data = request.data
+
+        serializer = InputSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        mail_all_group_members(user=user.id, group=pk, **serializer.validated_data)
+
+        return Response(status=status.HTTP_201_CREATED)
+
 
     @decorators.action(detail=True, methods=['post', 'update'], url_path="group_member_update")
     def group_member_update_api(self, request, pk):
