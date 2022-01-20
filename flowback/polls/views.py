@@ -874,7 +874,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         if delegate:
             data['delegator_id'] = delegate.id
 
-        index = get_list_or_404(PollProposalIndex, user=delegate or user, proposal__poll=poll)
+        index = get_list_or_404(adapter.index, user=delegate or user, proposal__poll=poll)
         positive_index = [x.proposal for x in sorted([x for x in index if x.is_positive],
                                                      key=lambda x: x.priority)]
         negative_index = [x.proposal for x in sorted([x for x in index if not x.is_positive],
