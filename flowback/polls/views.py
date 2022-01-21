@@ -99,7 +99,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                    PollProposalEvent.objects.create(
                        poll=poll,
                        type=PollProposal.Type.DROP,
-                       proposal="Drop this mission",
+                       proposal="Drop this poll",
                        date=datetime.datetime.now()
                    )
 
