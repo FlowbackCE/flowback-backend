@@ -105,7 +105,7 @@ class GetGroupPollsListSerializer(serializers.ModelSerializer):
         model = Poll
         fields = ('id', 'group', 'title', 'description', 'tags', 'files', 'accepted', 'accepted_at', 'top_proposal',
                   'end_time', 'created_at', 'created_by', 'comments_details', 'discussion', 'voting_status',
-                  'total_participants')
+                  'voting_type', 'success', 'total_participants')
 
     def get_group_details(self, obj):
         grp_serializers = GroupDetailPollListSerializer(obj.group, context={'request': self.context.get("request")})
@@ -195,9 +195,12 @@ class GroupPollDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Poll
-        fields = ('id', 'group', 'user_type', 'title', 'description', 'tags', 'files', 'accepted', 'accepted_at',
-                  'end_time', 'created_at', 'modified_at', 'created_by', 'modified_by', 'vote_details', "voting_status",
-                  "discussion", 'comments_details', 'type', 'voting_type', 'top_proposal', 'total_participants')
+        fields = ('id', 'group', 'user_type', 'title', 'description',
+                  'tags', 'files', 'accepted', 'accepted_at', 'success',
+                  'end_time', 'created_at', 'modified_at', 'created_by',
+                  'modified_by', 'vote_details', "voting_status",
+                  "discussion", 'comments_details', 'type', 'voting_type',
+                  'top_proposal', 'total_participants')
 
     def get_voting_type(self, obj):
         return obj.get_voting_type_display()
