@@ -318,6 +318,8 @@ class GroupPollViewSet(viewsets.ViewSet):
                     polls = Poll.objects.filter(group=group, created_at__lte=last_poll_created_at) \
                         .order_by('-created_at') if last_poll_created_at else []
 
+
+
                 page_number = data.get('page', 1)  # page number
                 page_size = data.get('page_size', 10)  # size per page
                 paginator = Paginator(polls, page_size)
@@ -364,6 +366,9 @@ class GroupPollViewSet(viewsets.ViewSet):
                 else:
                     polls = Poll.objects.filter(group=group, created_at__lte=last_poll_created_at) \
                         .order_by('-created_at') if last_poll_created_at else []
+
+                for poll in polls:
+                    self.__poll_votes_check(poll)
 
                 page_number = data.get('page', 1)  # page number
                 page_size = data.get('page_size', 10)  # size per page
@@ -431,6 +436,9 @@ class GroupPollViewSet(viewsets.ViewSet):
                 **arguments
             ).order_by('-created_at').distinct()
 
+        for poll in polls:
+            self.__poll_votes_check(poll)
+
         # Paginate
         page_number = data.get('page', 1)  # page number
         page_size = data.get('page_size', 10)  # size of data per page
@@ -486,6 +494,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         data = request.data
         # get poll by id or return error response if poll does not exist
         poll = Poll.objects.filter(id=data.get('poll')).first()
+        self.__poll_votes_check(poll)
         if poll:
             # get all public group or user participate on that group
             participant = group_user_permitted(
