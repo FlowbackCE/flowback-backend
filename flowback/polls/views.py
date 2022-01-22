@@ -318,55 +318,6 @@ class GroupPollViewSet(viewsets.ViewSet):
                     polls = Poll.objects.filter(group=group, created_at__lte=last_poll_created_at) \
                         .order_by('-created_at') if last_poll_created_at else []
 
-
-
-                page_number = data.get('page', 1)  # page number
-                page_size = data.get('page_size', 10)  # size per page
-                paginator = Paginator(polls, page_size)
-
-                response['count'] = paginator.count
-                response['total_page'] = len(paginator.page_range)
-                response['next'] = paginator.page(page_number).has_next()
-                response['previous'] = paginator.page(page_number).has_previous()
-
-                # create serializer for get data page by page
-                serializer = GetGroupPollsListSerializer(paginator.page(page_number), many=True,
-                                                         context={'request': self.request})
-                response['data'] = serializer.data
-
-                result = success_response(data=response, message="")
-                return Created(result)
-            result = failed_response(data=None, message="You are not a part of this group.")
-            return BadRequest(result)
-        result = failed_response(data=None, message="Group does not exist.")
-        return BadRequest(result)
-
-    @decorators.action(detail=False, methods=['post'], url_path="get_poll_list")
-    def get_poll_list(self, request, *args, **kwargs):
-        user = request.user
-        data = request.data
-        response = dict()
-        first_page = data.get('first_page')
-        last_poll_created_at = data.get('last_poll_created_at', None)
-
-        # get group by id and if does not exist then return error response
-        group = Group.objects.filter(id=data.get('group_id')).first()
-        if group:
-            # get all the group where logged in user is a participant on that group
-            part_of_group = Group.objects.filter(
-                Q(owners__in=[user]) | Q(admins__in=[user]) | Q(moderators__in=[user]) |
-                Q(members__in=[user]) | Q(delegators__in=[user]),
-                id=data.get('group_id'))
-            if part_of_group:
-                if first_page:
-                    # get all polls of particular group
-                    polls = Poll.objects.filter(group=group).order_by('-created_at')
-                    last_poll_created_at = polls.first().created_at if polls else None
-                    response['last_poll_created_at'] = last_poll_created_at
-                else:
-                    polls = Poll.objects.filter(group=group, created_at__lte=last_poll_created_at) \
-                        .order_by('-created_at') if last_poll_created_at else []
-
                 for poll in polls:
                     self.__poll_votes_check(poll)
 
