@@ -99,6 +99,7 @@ class GetGroupPollsListSerializer(serializers.ModelSerializer):
     comments_details = serializers.SerializerMethodField()
     discussion = serializers.SerializerMethodField()
     voting_status = serializers.SerializerMethodField()
+    voting_type = serializers.SerializerMethodField()
     top_proposal = serializers.SerializerMethodField()
 
     class Meta:
@@ -142,6 +143,9 @@ class GetGroupPollsListSerializer(serializers.ModelSerializer):
         if vote:
             return vote.vote_type
         return ""
+
+    def get_voting_type(self, obj):
+        return obj.get_voting_type_display()
 
     def get_top_proposal(self, obj):
         if obj.type == Poll.Type.EVENT:
