@@ -101,11 +101,12 @@ class GetGroupPollsListSerializer(serializers.ModelSerializer):
     voting_status = serializers.SerializerMethodField()
     voting_type = serializers.SerializerMethodField()
     top_proposal = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
 
     class Meta:
         model = Poll
         fields = ('id', 'group', 'title', 'description', 'tags', 'files', 'accepted', 'accepted_at', 'top_proposal',
-                  'end_time', 'created_at', 'created_by', 'comments_details', 'discussion', 'voting_status',
+                  'end_time', 'created_at', 'created_by', 'comments_details', 'discussion', 'type', 'voting_status',
                   'voting_type', 'success', 'total_participants')
 
     def get_group_details(self, obj):
@@ -134,6 +135,9 @@ class GetGroupPollsListSerializer(serializers.ModelSerializer):
         if obj.end_time > datetime.datetime.now():
             return "In progress"
         return "Finished"
+
+    def get_type(self, obj):
+        return obj.get_type_display()
 
     def get_voting_status(self, obj):
         user = self.get_user()
