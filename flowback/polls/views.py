@@ -888,6 +888,15 @@ class GroupPollViewSet(viewsets.ViewSet):
                            priority=x, is_positive=False
                            ) for x, y in enumerate(data.get('negative', []))]
 
+        elif poll.voting_type == poll.VotingType.QUADRATIC:
+            # [{proposal: int, score: int}, ...]
+            if sum([x['score'] for x in data.get('positive', [])]) > 100:
+                return ValidationError('Total score given out is greater than 100')
+
+            index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
+                          priority=vote['score'], is_positive=True
+                          ) for vote in data.get('positive', [])]
+
         else:
             return Response('Unknown variable voting_type.', status=status.HTTP_400_BAD_REQUEST)
 
