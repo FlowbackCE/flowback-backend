@@ -85,3 +85,21 @@ def mail_all_group_members(
               recipient_list=mailing_list)
 
     return True
+
+
+def leave_group(
+        *,
+        user: int,
+        group: int
+):
+    group_user_permitted(user=user, group=group, permission='member')
+    group = get_object_or_404(Group, id=group)
+    member = get_object_or_404(GroupMembers, user__id=user, group=group)
+
+    member.delete()
+    group.owners.filter(user=user).delete()
+    group.admins.filter(user=user).delete()
+    group.moderators.filter(user=user).delete()
+    group.delegators.filter(user=user).delete()
+    group.members.filter(user=user).delete()
+
