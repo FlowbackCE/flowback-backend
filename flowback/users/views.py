@@ -36,7 +36,7 @@ from flowback.users.serializer import UserSerializer, SimpleUserSerializer, User
 from flowback.users.serializer import CreateFriendRequestSerializer, GetAllFriendRequestSerializer, \
     GetAllFriendsRoomSerializer
 from flowback.polls.serializer import SearchPollSerializer
-from flowback.users.services import group_member_update, group_user_permitted, mail_all_group_members
+from flowback.users.services import group_member_update, group_user_permitted, mail_all_group_members, leave_group
 from settings.base import EMAIL_HOST_USER, DEBUG
 
 
@@ -662,6 +662,12 @@ class UserGroupViewSet(viewsets.ViewSet):
                 return Ok(result)
         result = failed_response(data={}, message="Group does not exist.")
         return BadRequest(result)
+
+    @decorators.action(detail=True, methods=['post'], url_path='leave_group')
+    def leave_group_api(self, request, pk):
+        user = request.user
+        leave_group(user=user.id, group=pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @decorators.action(detail=False, methods=['post'], url_path='get_group_join_requests')
     def get_group_join_requests(self, request, *args, **kwargs):
