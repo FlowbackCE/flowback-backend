@@ -831,13 +831,15 @@ class GroupPollViewSet(viewsets.ViewSet):
             data['delegator_id'] = delegate.id
 
         index = get_list_or_404(adapter.index, user=delegate or user, proposal__poll=poll)
+
         positive_index = [x.proposal for x in sorted([x for x in index if x.is_positive],
                                                      key=lambda x: x.priority)]
         negative_index = [x.proposal for x in sorted([x for x in index if not x.is_positive],
                                                      key=lambda x: x.priority)]
-
         data['positive'] = adapter.proposal_get_serializer(positive_index, many=True).data
         data['negative'] = adapter.proposal_get_serializer(negative_index, many=True).data
+        data['score'] = [dict(proposal=x.proposal, score=x.priority) for x in index]
+
         data['allow_vote'] = get_group_member(user=user.id, group=poll.group.id).allow_vote
 
         # TODO Bodge
