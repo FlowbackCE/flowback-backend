@@ -80,6 +80,7 @@ class Poll(TimeStampedModel):
     class VotingType(models.IntegerChoices):
         CONDORCET = 0, _('condorcet')
         TRAFFIC = 1, _('traffic')
+        CARDINAL = 2, _('cardinal')
 
     voting_type = models.IntegerField(
         choices=VotingType.choices,

@@ -515,7 +515,7 @@ class UserGroupViewSet(viewsets.ViewSet):
             group.description = data.get('description', group.description)
 
             image = data.get('image', '')
-            cover = data.get('cover', '')
+            cover = data.get('cover_image', '')
             image = image if image != '' else group.image
             cover = cover if cover != '' else group.cover_image
 
