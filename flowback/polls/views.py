@@ -861,7 +861,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                                                      key=lambda x: x.priority)]
         data['positive'] = adapter.proposal_get_serializer(positive_index, many=True).data
         data['negative'] = adapter.proposal_get_serializer(negative_index, many=True).data
-        data['score'] = [dict(proposal=x.proposal, score=x.priority) for x in index]
+        data['score'] = [dict(proposal=x.proposal.id, score=x.priority) for x in index]
 
         data['allow_vote'] = get_group_member(user=user.id, group=poll.group.id).allow_vote
 
