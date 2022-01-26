@@ -386,11 +386,21 @@ class PollProposalEventCreateSerializer(serializers.ModelSerializer):
 class PollProposalGetSerializer(serializers.ModelSerializer):
     user = SimpleUserSerializer()
     comments_details = serializers.SerializerMethodField()
+    user_priority = serializers.SerializerMethodField()
 
     class Meta:
         model = PollProposal
         fields = ('id', 'poll', 'proposal', 'user', 'file', 'final_score_positive', 'final_score_negative',
                   'created_at', 'comments_details')
+
+    def get_user_priority(self, obj):
+        if obj.poll.Type == Poll.Type.EVENT:
+            if data := PollProposalEventIndex.objects.filter(user=self.user, proposal=obj).first():
+                return data.priority
+
+        else:
+            if data := PollProposalIndex.objects.filter(user=self.user, proposal=obj).first():
+                return data.priority
 
     def get_comments_details(self, obj):
         proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by(

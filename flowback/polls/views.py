@@ -890,7 +890,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                            priority=x, is_positive=False
                            ) for x, y in enumerate(data.get('negative', []))]
 
-        elif poll.voting_type == poll.VotingType.QUADRATIC:
+        elif poll.voting_type == poll.VotingType.CARDINAL:
             # [{proposal: int, score: int}, ...]
             if sum([x['score'] for x in data.get('positive', [])]) > 100:
                 return ValidationError('Total score given out is greater than 100')
