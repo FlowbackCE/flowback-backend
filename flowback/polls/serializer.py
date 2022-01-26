@@ -392,7 +392,8 @@ class PollProposalGetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollProposal
-        fields = ('id', 'poll', 'proposal', 'user', 'file', 'final_score_positive', 'final_score_negative',
+        fields = ('id', 'poll', 'proposal', 'user', 'file', 'user_priority',
+                  'final_score_positive', 'final_score_negative',
                   'created_at', 'comments_details')
 
     def get_user_priority(self, obj):
