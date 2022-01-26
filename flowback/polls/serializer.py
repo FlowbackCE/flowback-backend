@@ -387,6 +387,8 @@ class PollProposalGetSerializer(serializers.ModelSerializer):
     user = SimpleUserSerializer()
     comments_details = serializers.SerializerMethodField()
     user_priority = serializers.SerializerMethodField()
+    final_score_positive = serializers.SerializerMethodField()
+    final_score_negative = serializers.SerializerMethodField()
 
     class Meta:
         model = PollProposal
@@ -401,6 +403,14 @@ class PollProposalGetSerializer(serializers.ModelSerializer):
         else:
             if data := PollProposalIndex.objects.filter(user=self.user, proposal=obj).first():
                 return data.priority
+
+    def get_final_score_positive(self, obj):
+        score = obj.final_score_positive
+        return score if obj.poll.VotingType != Poll.VotingType.CARDINAL else score / 1000000
+
+    def get_final_score_negative(self, obj):
+        score = obj.final_score_negative
+        return score if obj.poll.VotingType != Poll.VotingType.CARDINAL else score / 1000000
 
     def get_comments_details(self, obj):
         proposal_comments = PollProposalComments.objects.filter(counter_proposal=obj).order_by(
