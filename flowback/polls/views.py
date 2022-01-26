@@ -742,17 +742,24 @@ class GroupPollViewSet(viewsets.ViewSet):
                 elif poll.voting_type == poll.VotingType.CARDINAL:
                     total_score = sum([x.priority for x in user_index])
 
-                    for vote in user_index:
-                        score = multiplier * len(user_index) * (vote.priority / total_score)
-                        if score:
-                            counter[vote.proposal_id][0] += score / (total_participants * score)
+                    if total_score > 0:
+                        for vote in user_index:
+                            counter[vote.proposal_id][0] += multiplier * (vote.priority / total_score)
+
+            # Post calculation for cardinal voting
+            if poll.voting_type == poll.VotingType.CARDINAL:
+                finalized_data = {}
+
+                for key in counter.keys():
+                    total_score = sum(x[0] for x in counter.values())
+                    if total_score > 0:
+                        finalized_data[key] = counter[key][0] / sum(x[0] for x in counter.values())
+
+                for key in counter.keys():
+                    counter[key][0] = math.floor(finalized_data[key] * 1000000)
 
             # Insert counter to proposals
             for key, counter_proposal in enumerate(counter_proposals):
-                if poll.voting_type == poll.VotingType.CARDINAL:
-                    counter[counter_proposal.id][0] = math.floor(counter[counter_proposal.id][0] * 1000000)
-                    counter[counter_proposal.id][1] = math.floor(counter[counter_proposal.id][1] * 1000000)
-
                 counter_proposals[key].final_score_positive = counter[counter_proposal.id][0]
                 counter_proposals[key].final_score_negative = counter[counter_proposal.id][1]
 
