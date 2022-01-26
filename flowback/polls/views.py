@@ -701,6 +701,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         # Counting Proposal Votes
         if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
             counter_proposals = adapter.proposal.objects.filter(poll=poll).all()
+            total_participants = len(GroupMembers.objects.filter(group=poll.group, allow_vote=True))
             indexes = adapter.index.objects.filter(proposal__poll=poll)
             counter = {key.id: [0, 0] for key in counter_proposals}
 
@@ -738,8 +739,20 @@ class GroupPollViewSet(viewsets.ViewSet):
                     for index in negative:
                         counter[index.proposal_id][1] += multiplier
 
+                elif poll.voting_type == poll.VotingType.CARDINAL:
+                    total_score = sum([x.priority for x in user_index])
+
+                    for vote in user_index:
+                        score = multiplier * len(user_index) * (vote.priority / total_score)
+                        if score:
+                            counter[vote.proposal_id][0] += score / (total_participants * score)
+
             # Insert counter to proposals
             for key, counter_proposal in enumerate(counter_proposals):
+                if poll.voting_type == poll.VotingType.CARDINAL:
+                    counter[counter_proposal.id][0] = math.floor(counter[counter_proposal.id][0] * 1000000)
+                    counter[counter_proposal.id][1] = math.floor(counter[counter_proposal.id][1] * 1000000)
+
                 counter_proposals[key].final_score_positive = counter[counter_proposal.id][0]
                 counter_proposals[key].final_score_negative = counter[counter_proposal.id][1]
 
@@ -758,7 +771,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                 votes_counted=True,
                 success=success,
                 top_proposal=top.id if top else None,
-                total_participants=len(GroupMembers.objects.filter(group=poll.group, allow_vote=True))
+                total_participants=total_participants
             )
 
     # TODO improve safety
