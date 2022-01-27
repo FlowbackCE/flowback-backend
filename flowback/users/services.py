@@ -1,4 +1,4 @@
-from django.core.mail import send_mail
+from django.core import mail
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from flowback.users.models import User, Group, GroupMembers
@@ -79,10 +79,13 @@ def mail_all_group_members(
     mailing_list = GroupMembers.objects.filter(group_id=group)\
         .exclude(user__email=user.email)\
         .values_list('user__email', flat=True)
-    send_mail(subject=subject,
-              message=message,
-              from_email=EMAIL_HOST_USER,
-              recipient_list=mailing_list)
+
+    mail.EmailMessage(
+        subject=subject,
+        body=message,
+        from_email=EMAIL_HOST_USER,
+        bcc=mailing_list
+    ).send(fail_silently=True)
 
     return True
 
