@@ -915,8 +915,8 @@ class GroupPollViewSet(viewsets.ViewSet):
 
         elif poll.voting_type == poll.VotingType.CARDINAL:
             # [{proposal: int, score: int}, ...]
-            if sum([x['score'] for x in data.get('positive', [])]) > 100:
-                return ValidationError('Total score given out is greater than 100')
+            if sum([x['score'] for x in data.get('positive', [])]) > 1000000:
+                return ValidationError('Total score given out is greater than 1000000')
 
             index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
                           priority=vote['score'], is_positive=True
