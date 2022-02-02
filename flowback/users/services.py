@@ -100,9 +100,9 @@ def leave_group(
     member = get_object_or_404(GroupMembers, user__id=user, group=group)
 
     member.delete()
-    group.owners.filter(user=user).delete()
-    group.admins.filter(user=user).delete()
-    group.moderators.filter(user=user).delete()
-    group.delegators.filter(user=user).delete()
-    group.members.filter(user=user).delete()
+    group.owners.remove(user)
+    group.admins.remove(user)
+    group.moderators.remove(user)
+    group.delegators.remove(user)
+    group.members.remove(user)
 
