@@ -139,6 +139,7 @@ class Group(TimeStampedModel):
         (NEEDS_MODERATION, _('Needs Moderation')),
     )
 
+    blockchain = models.BooleanField(default=False)
     owners = models.ManyToManyField(User, related_name="group_owners")
     admins = models.ManyToManyField(User, related_name="group_admins")
     moderators = models.ManyToManyField(User, related_name="group_moderators")
@@ -166,6 +167,7 @@ class Group(TimeStampedModel):
 class GroupMembers(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    key = models.TextField(null=True, blank=True)
     allow_vote = models.BooleanField(default=False)
 
     class Meta:
