@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, get_list_or_404
 from rest_framework import decorators, viewsets, status, serializers
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -639,6 +640,9 @@ class UserGroupViewSet(viewsets.ViewSet):
         # get group object by group id
         group = Group.objects.filter(id=data.get('group')).first()
         if group:
+            if not data.get('key') and group.blockchain:
+                return ValidationError('Group requires key to join')
+
             # check the join type of group
             if not group.members_request == 'direct_join':
                 # sent request to owner and admin to join the group
@@ -646,7 +650,8 @@ class UserGroupViewSet(viewsets.ViewSet):
                 serializer = CreateGroupRequestSerializer(data=data)
                 if serializer.is_valid(raise_exception=False):
                     serializer.save()
-                    group_member_update(target=user.id, group=group.id)
+                    group_member_update(target=user.id, group=group.id,
+                                        key=data.get('key'))
                     result = success_response(data=None, message="")
                     return Created(result)
                 result = failed_response(data=serializer.errors, message="")
@@ -658,7 +663,8 @@ class UserGroupViewSet(viewsets.ViewSet):
                 else:
                     group.members.add(user)
                 group.save()
-                group_member_update(target=user.id, group=group.id)
+                group_member_update(target=user.id, group=group.id,
+                                    key=data.get('key'))
                 result = success_response(data={}, message="")
                 return Ok(result)
         result = failed_response(data={}, message="Group does not exist.")
