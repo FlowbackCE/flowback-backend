@@ -51,7 +51,8 @@ def group_member_update(
         user: int = None,
         target: int,
         group: int,
-        allow_vote: bool = False
+        allow_vote: bool = False,
+        key: str = None
 ) -> bool:
 
     if user:
@@ -105,4 +106,3 @@ def leave_group(
     group.moderators.remove(user)
     group.delegators.remove(user)
     group.members.remove(user)
-
