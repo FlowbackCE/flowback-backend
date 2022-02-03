@@ -93,17 +93,22 @@ def mail_all_group_members(
 
 def leave_group(
         *,
-        user: int,
-        group: int
+        target: int,
+        user: int = None,
+        group: int,
 ):
-    group_user_permitted(user=user, group=group, permission='member')
+
+    if user:
+        group_user_permitted(user=user, group=group, permission='admin')
+
+    group_user_permitted(user=target, group=group, permission='member')
     group = get_object_or_404(Group, id=group)
-    member = get_object_or_404(GroupMembers, user__id=user, group=group)
+    member = get_object_or_404(GroupMembers, user__id=target, group=group)
 
     member.delete()
-    group.owners.remove(user)
-    group.admins.remove(user)
-    group.moderators.remove(user)
-    group.delegators.remove(user)
-    group.members.remove(user)
+    group.owners.remove(target)
+    group.admins.remove(target)
+    group.moderators.remove(target)
+    group.delegators.remove(target)
+    group.members.remove(target)
 

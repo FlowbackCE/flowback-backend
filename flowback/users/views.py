@@ -672,7 +672,19 @@ class UserGroupViewSet(viewsets.ViewSet):
     @decorators.action(detail=True, methods=['post'], url_path='leave_group')
     def leave_group_api(self, request, pk):
         user = request.user
-        leave_group(user=user.id, group=pk)
+        leave_group(target=user.id, group=pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @decorators.action(detail=True, methods=['post'], url_path='kick_group_user')
+    def kick_group_user_api(self, request, pk):
+        class InputSerializer(serializers.Serializer):
+            target = serializers.IntegerField
+
+        user = request.user
+        serializer = InputSerializer(data=request.data)
+
+        serializer.is_valid()
+        leave_group(user=user.id, group=pk, **serializer.validated_data)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @decorators.action(detail=False, methods=['post'], url_path='get_group_join_requests')
