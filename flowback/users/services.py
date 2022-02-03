@@ -105,4 +105,3 @@ def leave_group(
     group.moderators.remove(user)
     group.delegators.remove(user)
     group.members.remove(user)
-
