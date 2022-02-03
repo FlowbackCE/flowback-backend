@@ -131,8 +131,8 @@ class GroupRequestParticipantSerializer(serializers.ModelSerializer):
 class UserGroupCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
-        fields = ('title', 'description', 'blockchain', 'image', 'cover_image',
-                  'public', 'members_request', 'poll_approval', 'country', 'city')
+        fields = ('title', 'description', 'image', 'cover_image', 'public', 'members_request', 'poll_approval',
+                  'country', 'city')
 
 
 class SearchGroupSerializer(serializers.ModelSerializer):

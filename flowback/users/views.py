@@ -286,7 +286,6 @@ class UserGroupViewSet(viewsets.ViewSet):
                                                          updated_by=request.user,
                                                          title=serializer.validated_data.get('title'),
                                                          description=serializer.validated_data.get('description'),
-                                                         blockchain=serializer.validated_data.get('blockchain'),
                                                          public=serializer.validated_data.get('public'),
                                                          members_request=serializer.validated_data.get(
                                                              'members_request'),
