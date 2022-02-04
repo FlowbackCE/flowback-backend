@@ -678,7 +678,7 @@ class UserGroupViewSet(viewsets.ViewSet):
     @decorators.action(detail=True, methods=['post'], url_path='kick_group_user')
     def kick_group_user_api(self, request, pk):
         class InputSerializer(serializers.Serializer):
-            target = serializers.IntegerField
+            target = serializers.IntegerField()
 
         user = request.user
         serializer = InputSerializer(data=request.data)
