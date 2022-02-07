@@ -683,7 +683,7 @@ class UserGroupViewSet(viewsets.ViewSet):
         user = request.user
         serializer = InputSerializer(data=request.data)
 
-        serializer.is_valid()
+        serializer.is_valid(raise_exception=True)
         leave_group(user=user.id, group=pk, **serializer.validated_data)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
