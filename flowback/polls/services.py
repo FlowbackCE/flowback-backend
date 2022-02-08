@@ -1,17 +1,11 @@
-from itertools import groupby
-
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from flowback.polls.helper import PollAdapter
 from flowback.polls.models import Poll, PollProposal
 
-# Save data as json
-# Poll (id, title, description, total_participants, votes_counted, success, top_proposal, date)
-# Proposal (id, title, description, final_score_positive, final_score_negative)
-# Vote (user{id, proposal_id, proposal_date}, score, is_positive)
 
-def create_poll_reciept(
+def create_poll_receipt(
         *,
         poll: int
 ):
@@ -32,7 +26,7 @@ def create_poll_reciept(
             model = PollProposal
             fields = (
                 'id', 'title', 'description', 'final_score_positive',
-                'final_score_negative', 'created_at', 'file'
+                'final_score_negative', 'created_at', 'file', 'votes'
             )
 
         def get_votes(self, obj):
@@ -46,7 +40,7 @@ def create_poll_reciept(
             model = Poll
             fields = (
                 'id', 'title', 'description', 'total_participants', 'files',
-                'votes_counted', 'success', 'top_proposal', 'created_at'
+                'votes_counted', 'success', 'top_proposal', 'created_at', 'proposals'
             )
 
         def get_proposals(self, obj):
