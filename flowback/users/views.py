@@ -38,7 +38,7 @@ from flowback.users.serializer import CreateFriendRequestSerializer, GetAllFrien
     GetAllFriendsRoomSerializer
 from flowback.polls.serializer import SearchPollSerializer
 from flowback.users.services import group_member_update, group_user_permitted, mail_all_group_members, leave_group
-from settings.base import EMAIL_HOST_USER, DEBUG
+from settings.base import EMAIL_HOST_USER, DEBUG, NOREG
 
 
 class UserViewSet(viewsets.ViewSet):
@@ -53,6 +53,10 @@ class UserViewSet(viewsets.ViewSet):
         data = request.data
         # serializer for sign up user for first step
         serializer = OnboardUserFirstSerializer(data=data)
+
+        if NOREG:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
         if serializer.is_valid(raise_exception=False):
             verification_code = randint(100000, 999999)
             user_onboard = OnboardUser.objects.filter(email=serializer.validated_data.get('email')).first()
@@ -125,6 +129,10 @@ class UserViewSet(viewsets.ViewSet):
         data = request.data
         # serializer for final step for sign up the user
         serializer = OnboardUserSecondSerializer(data=data)
+
+        if NOREG:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
         if serializer.is_valid(raise_exception=False):
             user_onboard = OnboardUser.objects.filter(email=serializer.validated_data.get('email')).first()
             if user_onboard:
@@ -151,6 +159,10 @@ class UserViewSet(viewsets.ViewSet):
 
     @decorators.action(detail=False, methods=['post'], url_path="sign_up_three")
     def sign_up_three(self, request, *args, **kwargs):
+
+        if NOREG:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
         data = request.data
         user_onboard = OnboardUser.objects.filter(email=data.get('email')).first()
         if user_onboard:

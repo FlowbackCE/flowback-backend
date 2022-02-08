@@ -24,6 +24,7 @@ print(BASE_DIR)
 env = environ.Env(DEBUG=(bool, False))
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 DUMMY = os.getenv('DUMMY', 'True') == 'True'
+NOREG = os.getenv('NOREG', 'False') == 'True'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
