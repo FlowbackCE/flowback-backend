@@ -7,7 +7,7 @@ from django.test import TestCase
 
 from flowback.users.tests import UserFactory, GroupFactory
 
-from flowback.polls.services import create_poll_reciept
+from flowback.polls.services import create_poll_receipt
 from flowback.polls.helper import PollAdapter
 from flowback.polls.models import Poll, PollProposal
 
