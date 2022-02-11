@@ -27,6 +27,51 @@ class GroupFactory(DjangoModelFactory):
     created_by = UserFactory.create()
     updated_by = created_by
 
+    @factory.post_generation
+    def owners(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for owner in extracted:
+                self.owners.add(owner)
+
+    @factory.post_generation
+    def admins(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for admin in extracted:
+                self.admins.add(admin)
+
+    @factory.post_generation
+    def moderators(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for moderator in extracted:
+                self.moderators.add(moderator)
+
+    @factory.post_generation
+    def delegators(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for delegator in extracted:
+                self.delegators.add(delegator)
+
+    @factory.post_generation
+    def members(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for member in extracted:
+                self.members.add(member)
+
 
 class UserTestCase(TestCase):
     def test_group_user_permitted(self):
