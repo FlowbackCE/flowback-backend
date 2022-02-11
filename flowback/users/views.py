@@ -224,6 +224,25 @@ class CurrentUserViewSet(viewsets.GenericViewSet):
         result = success_response(data=data, message="")
         return Created(result)
 
+    @decorators.action(detail=False, methods=['get'], url_path='get_public_key')
+    def get_public_key_api(self, request):
+        class OutputSerializer(serializers.Serializer):
+            public_key = serializers.CharField(allow_null=True, allow_blank=True)
+
+        user = request.user
+        return Response(data=OutputSerializer(user).data)
+
+    @decorators.action(detail=False, methods=['post'], url_path='update_public_key')
+    def update_public_key_api(self, request):
+        class InputSerializer(serializers.Serializer):
+            public_key = serializers.CharField(allow_null=True, default=None)
+
+        user = request.user
+        serializer = InputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user.public_key = serializer.validated_data.get('public_key')
+        user.save()
+
     @decorators.action(detail=False, methods=['post'], url_path='get-my-data')
     def get_logged_in_user(self, request):
         # get details of logged in user

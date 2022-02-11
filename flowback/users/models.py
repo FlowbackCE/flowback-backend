@@ -58,6 +58,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
             'unique': _("A user with that username already exists."),
         },
     )
+    public_key = models.TextField(null=True, blank=True)
     user_type = models.CharField(_('User Type'), max_length=45, db_index=True,
                                  choices=USER_TYPE_CHOICES, default=NORMAL_USER)
     first_name = models.CharField(_('first name'), max_length=30, blank=True)
