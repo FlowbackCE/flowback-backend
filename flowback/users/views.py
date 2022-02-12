@@ -242,6 +242,7 @@ class CurrentUserViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         user.public_key = serializer.validated_data.get('public_key')
         user.save()
+        return Response(status=status.HTTP_200_OK)
 
     @decorators.action(detail=False, methods=['post'], url_path='get-my-data')
     def get_logged_in_user(self, request):
