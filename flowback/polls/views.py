@@ -891,23 +891,28 @@ class GroupPollViewSet(viewsets.ViewSet):
         data['positive'].reverse()
 
         index = []
-        if poll.voting_type == poll.VotingType.TRAFFIC:
+        if poll.VotingType == poll.VotingType.CONDORCET:
+            index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
+                          priority=index, is_positive=True, hash=vote.get('hash')
+                          ) for index, vote in enumerate(data.get('positive', []))]
+
+        elif poll.voting_type == poll.VotingType.TRAFFIC:
             # Positive Indexes
             index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
-                          priority=vote['score'], is_positive=True
-                          ) for vote in data.get('positive', [])]
+                          priority=index, is_positive=True, hash=vote.get('hash')
+                          ) for index, vote in enumerate(data.get('positive', []))]
 
             # Negative Indexes
             index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
-                          priority=vote['score'], is_positive=True
-                          ) for vote in data.get('negative', [])]
+                          priority=index, is_positive=False, hash=vote.get('hash')
+                          ) for index, vote in enumerate(data.get('negative', []))]
 
-        elif poll.voting_type in [poll.VotingType.TRAFFIC, poll.VotingType.CARDINAL]:
+        elif poll.voting_type == poll.VotingType.CARDINAL:
             if sum([x['score'] for x in data.get('positive', [])]) > 1000000:
                 return ValidationError('Total score given out is greater than 1000000')
 
             index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
-                          priority=vote['score'], is_positive=True
+                          priority=vote['score'], is_positive=True, hash=vote.get('hash')
                           ) for vote in data.get('positive', [])]
 
         else:
