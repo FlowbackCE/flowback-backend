@@ -439,7 +439,7 @@ class PollProposalIndexCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollProposalIndex
-        fields = ('proposal', 'user', 'priority', 'is_positive')
+        fields = ('proposal', 'user', 'priority', 'is_positive', 'hash')
 
     def get_unique_together_validators(self):
         return []
@@ -449,7 +449,7 @@ class PollProposalEventIndexCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollProposalEventIndex
-        fields = ('proposal', 'user', 'priority', 'is_positive')
+        fields = ('proposal', 'user', 'priority', 'is_positive', 'hash')
 
     def get_unique_together_validators(self):
         return []

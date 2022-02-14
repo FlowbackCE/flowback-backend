@@ -199,7 +199,7 @@ class PollProposalEventIndex(TimeStampedModel):
     hash = models.TextField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('proposal', 'user', 'priority', 'is_positive')
+        unique_together = ('proposal', 'user', 'priority', 'is_positive', 'hash')
 
 
 class PollProposalComments(TimeStampedModel):
