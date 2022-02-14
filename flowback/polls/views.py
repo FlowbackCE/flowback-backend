@@ -891,30 +891,18 @@ class GroupPollViewSet(viewsets.ViewSet):
         data['positive'].reverse()
 
         index = []
-        if poll.voting_type == poll.VotingType.CONDORCET:
+        if poll.voting_type == poll.VotingType.TRAFFIC:
             # Positive Indexes
-            index = [dict(proposal=y, user=user.id, poll=poll.id,
-                          priority=x, is_positive=True
-                          ) for x, y in enumerate(data.get('positive', []))]
+            index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
+                          priority=vote['score'], is_positive=True
+                          ) for vote in data.get('positive', [])]
 
             # Negative Indexes
-            # index += [dict(proposal=y, user=user.id, poll=poll.id,
-            #               priority=x, is_positive=False
-            #               ) for x, y in enumerate(data.get('negative', []))]
+            index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
+                          priority=vote['score'], is_positive=True
+                          ) for vote in data.get('negative', [])]
 
-        elif poll.voting_type == poll.VotingType.TRAFFIC:
-            # Positive Indexes
-            index = [dict(proposal=y, user=user.id, poll=poll.id,
-                          priority=x, is_positive=True
-                          ) for x, y in enumerate(data.get('positive', []))]
-
-            # Negative Indexes
-            index += [dict(proposal=y, user=user.id, poll=poll.id,
-                           priority=x, is_positive=False
-                           ) for x, y in enumerate(data.get('negative', []))]
-
-        elif poll.voting_type == poll.VotingType.CARDINAL:
-            # [{proposal: int, score: int}, ...]
+        elif poll.voting_type in [poll.VotingType.TRAFFIC, poll.VotingType.CARDINAL]:
             if sum([x['score'] for x in data.get('positive', [])]) > 1000000:
                 return ValidationError('Total score given out is greater than 1000000')
 
