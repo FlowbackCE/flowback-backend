@@ -227,6 +227,7 @@ class CurrentUserViewSet(viewsets.GenericViewSet):
     @decorators.action(detail=False, methods=['get'], url_path='get_public_key')
     def get_public_key_api(self, request):
         class OutputSerializer(serializers.Serializer):
+            address = serializers.CharField(allow_null=True, allow_blank=True)
             public_key = serializers.CharField(allow_null=True, allow_blank=True)
 
         user = request.user
@@ -235,6 +236,7 @@ class CurrentUserViewSet(viewsets.GenericViewSet):
     @decorators.action(detail=False, methods=['post'], url_path='update_public_key')
     def update_public_key_api(self, request):
         class InputSerializer(serializers.Serializer):
+            address = serializers.CharField(allow_null=True, allow_blank=True)
             public_key = serializers.CharField(allow_null=True, default=None)
 
         user = request.user
