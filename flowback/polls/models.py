@@ -185,6 +185,7 @@ class PollProposalIndex(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     priority = models.IntegerField()
     is_positive = models.BooleanField()  # Whether the user votes for or against the proposal
+    hash = models.TextField(null=True, blank=True)
 
     class Meta:
         unique_together = ('proposal', 'user')
@@ -195,9 +196,10 @@ class PollProposalEventIndex(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     priority = models.IntegerField()
     is_positive = models.BooleanField()  # Whether the user votes for or against the counter-proposal
+    hash = models.TextField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('proposal', 'user', 'priority', 'is_positive')
+        unique_together = ('proposal', 'user', 'priority', 'is_positive', 'hash')
 
 
 class PollProposalComments(TimeStampedModel):

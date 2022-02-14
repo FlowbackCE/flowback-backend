@@ -24,6 +24,7 @@ print(BASE_DIR)
 env = environ.Env(DEBUG=(bool, False))
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 DUMMY = os.getenv('DUMMY', 'True') == 'True'
+NOREG = os.getenv('NOREG', 'False') == 'True'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -162,11 +163,8 @@ AUTH_USER_MODEL = 'users.User'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
-STATIC_URL = '/static/'
-print(STATIC_URL)
+STATIC_URL = '/static_backend/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
-print(BASE_DIR)
-print(STATIC_ROOT)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 SESSION_COOKIE_NAME = 'sessionid_flowback'
