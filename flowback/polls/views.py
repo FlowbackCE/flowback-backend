@@ -891,7 +891,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         data['positive'].reverse()
 
         index = []
-        if poll.VotingType == poll.VotingType.CONDORCET:
+        if poll.voting_type == poll.VotingType.CONDORCET:
             index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
                           priority=index, is_positive=True, hash=vote.get('hash')
                           ) for index, vote in enumerate(data.get('positive', []))]
@@ -903,9 +903,9 @@ class GroupPollViewSet(viewsets.ViewSet):
                           ) for index, vote in enumerate(data.get('positive', []))]
 
             # Negative Indexes
-            index = [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
-                          priority=index, is_positive=False, hash=vote.get('hash')
-                          ) for index, vote in enumerate(data.get('negative', []))]
+            index += [dict(proposal=vote['proposal'], user=user.id, poll=poll.id,
+                           priority=index, is_positive=False, hash=vote.get('hash')
+                           ) for index, vote in enumerate(data.get('negative', []))]
 
         elif poll.voting_type == poll.VotingType.CARDINAL:
             if sum([x['score'] for x in data.get('positive', [])]) > 1000000:
