@@ -25,13 +25,13 @@ def create_poll_receipt(
         class Meta:
             model = PollProposal
             fields = (
-                'id', 'title', 'description', 'final_score_positive',
+                'id', 'user', 'proposal', 'final_score_positive',
                 'final_score_negative', 'created_at', 'file', 'votes'
             )
 
         def get_votes(self, obj):
             data = adapter.index.objects.filter(proposal=obj).all()
-            return VoteSerializer(data, many=True)
+            return VoteSerializer(data, many=True).data
 
     class PollSerializer(serializers.ModelSerializer):
         proposals = serializers.SerializerMethodField()
@@ -45,6 +45,6 @@ def create_poll_receipt(
 
         def get_proposals(self, obj):
             data = PollProposal.objects.filter(poll=obj).all()
-            return ProposalSerializer(data, many=True)
+            return ProposalSerializer(data, many=True).data
 
-    return PollSerializer(poll)
+    return PollSerializer(poll).data

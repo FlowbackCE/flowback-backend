@@ -24,7 +24,7 @@ class GroupFactory(DjangoModelFactory):
         model = Group
 
     title = factory.Faker('company')
-    created_by = UserFactory.create()
+    created_by = factory.SubFactory(UserFactory)
     updated_by = created_by
 
     @factory.post_generation
