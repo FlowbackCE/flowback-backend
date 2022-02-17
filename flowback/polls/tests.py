@@ -19,7 +19,7 @@ class PollFactory(DjangoModelFactory):
         model = Poll
 
     created_by = factory.SubFactory(UserFactory)
-    modified_by = created_by
+    modified_by = factory.LazyAttribute(lambda o: o.created_by)
     group = factory.SubFactory(GroupFactory, created_by=created_by)
     title = factory.Faker('company')
     description = factory.Faker('bs')
@@ -66,7 +66,7 @@ class PollProposalEventIndexFactory(DjangoModelFactory):
     class Meta:
         model = PollProposalEventIndex
 
-    user = UserFactory.create()
+    user = factory.SubFactory(UserFactory)
     proposal = factory.SubFactory(PollProposalEventFactory, user=user)
     priority = 0
     is_positive = True
@@ -74,7 +74,7 @@ class PollProposalEventIndexFactory(DjangoModelFactory):
 
 class PollTestCase(TestCase):
     def test_create_poll_receipt(self):
-        owner, member1, member2, member3, delegator1, delegator2 = [UserFactory.create() for x in range(6)]
+        owner, member1, member2, member3, delegator1, delegator2 = UserFactory.create_batch(6)
         users = [owner, member1, member2, member3, delegator1, delegator2]
         group = GroupFactory(
             created_by=owner,

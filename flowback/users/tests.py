@@ -14,8 +14,8 @@ class UserFactory(DjangoModelFactory):
     class Meta:
         model = User
 
-    username = factory.Faker('first_name')
-    email = factory.Faker('email')
+    username = factory.Sequence(lambda n: f"person_{n}")
+    email = factory.LazyAttribute(lambda o: f'{o.username}@example.com')
     accepted_terms_condition = True
 
 
@@ -25,7 +25,7 @@ class GroupFactory(DjangoModelFactory):
 
     title = factory.Faker('company')
     created_by = factory.SubFactory(UserFactory)
-    updated_by = created_by
+    updated_by = factory.LazyAttribute(lambda o: o.created_by)
 
     @factory.post_generation
     def owners(self, create, extracted, **kwargs):
@@ -75,7 +75,9 @@ class GroupFactory(DjangoModelFactory):
 
 class UserTestCase(TestCase):
     def test_group_user_permitted(self):
-        guest, member, delegator, moderator, admin, owner = [UserFactory.create() for x in range(6)]
+        test_user = UserFactory.create()
+        test_user_2 = UserFactory.create()
+        guest, member, delegator, moderator, admin, owner = UserFactory.create_batch(6)
 
         group = GroupFactory(created_by=owner, updated_by=owner)
         group.owners.add(owner)
