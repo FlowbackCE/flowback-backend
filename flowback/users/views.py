@@ -243,6 +243,7 @@ class CurrentUserViewSet(viewsets.GenericViewSet):
         serializer = InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user.public_key = serializer.validated_data.get('public_key')
+        user.address = serializer.validated_data.get('address')
         user.save()
         return Response(status=status.HTTP_200_OK)
 
