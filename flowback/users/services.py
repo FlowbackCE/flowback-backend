@@ -81,12 +81,14 @@ def mail_all_group_members(
         .exclude(user__email=user.email)\
         .values_list('user__email', flat=True)
 
-    mail.EmailMessage(
+    msg = mail.EmailMessage(
         subject=subject,
         body=message,
         from_email=EMAIL_HOST_USER,
         bcc=mailing_list
-    ).send(fail_silently=True)
+    )
+    msg.content_subtype = 'text/html'
+    msg.send(fail_silently=True)
 
     return True
 
