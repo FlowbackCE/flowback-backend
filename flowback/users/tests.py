@@ -4,7 +4,7 @@ from faker import Faker
 from django.test import TestCase
 
 from flowback.exceptions import PermissionDenied
-from flowback.users.models import User, Group
+from flowback.users.models import User, Group, GroupMembers
 from flowback.users.services import group_user_permitted, group_member_update
 
 import datetime
@@ -54,6 +54,7 @@ class GroupFactory(DjangoModelFactory):
             for moderator in extracted:
                 self.moderators.add(moderator)
 
+
     @factory.post_generation
     def delegators(self, create, extracted, **kwargs):
         if not create:
@@ -71,6 +72,15 @@ class GroupFactory(DjangoModelFactory):
         if extracted:
             for member in extracted:
                 self.members.add(member)
+
+
+class GroupMembersFactory(DjangoModelFactory):
+    class Meta:
+        model = GroupMembers
+
+    user = factory.SubFactory(UserFactory)
+    group = factory.SubFactory(GroupFactory)
+    allow_vote = True
 
 
 class UserTestCase(TestCase):

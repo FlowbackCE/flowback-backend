@@ -7,9 +7,10 @@ from factory.django import DjangoModelFactory
 from faker import Faker
 from django.test import TestCase
 
-from flowback.users.tests import UserFactory, GroupFactory
+from flowback.users.models import GroupMembers
+from flowback.users.tests import UserFactory, GroupFactory, GroupMembersFactory
 
-from flowback.polls.services import create_poll_receipt
+from flowback.polls.services import create_poll_receipt, check_poll
 from flowback.polls.helper import PollAdapter
 from flowback.polls.models import Poll, PollProposal, PollProposalEvent, PollProposalIndex, PollProposalEventIndex
 
@@ -28,7 +29,7 @@ class PollFactory(DjangoModelFactory):
     voting_type = Poll.VotingType.CONDORCET
 
     start_time = datetime.datetime.now()
-    end_time = datetime.datetime.now() + datetime.timedelta(days=1)
+    end_time = datetime.datetime.now()
 
 
 class PollProposalFactory(DjangoModelFactory):
@@ -60,6 +61,7 @@ class PollProposalIndexFactory(DjangoModelFactory):
     proposal = factory.SubFactory(PollProposalFactory, user=user)
     priority = 0
     is_positive = True
+    hash = 'magic_hash'
 
 
 class PollProposalEventIndexFactory(DjangoModelFactory):
@@ -70,12 +72,14 @@ class PollProposalEventIndexFactory(DjangoModelFactory):
     proposal = factory.SubFactory(PollProposalEventFactory, user=user)
     priority = 0
     is_positive = True
+    hash = 'magic_hash'
 
 
 class PollTestCase(TestCase):
     def test_create_poll_receipt(self):
         owner, member1, member2, member3, delegator1, delegator2 = UserFactory.create_batch(6)
         users = [owner, member1, member2, member3, delegator1, delegator2]
+
         group = GroupFactory(
             created_by=owner,
             owners=[owner],
@@ -83,7 +87,7 @@ class PollTestCase(TestCase):
             members=[member1, member2, member3]
         )
 
-        poll = PollFactory(created_by=owner, voting_type=Poll.VotingType.CARDINAL)
+        poll = PollFactory(created_by=owner, voting_type=Poll.VotingType.CARDINAL, group=group)
 
         proposal1, proposal2, proposal3 = [
             PollProposalFactory(poll=poll, user=user)
@@ -92,6 +96,10 @@ class PollTestCase(TestCase):
         proposals = [proposal1, proposal2, proposal3]
 
         for user in users:
+            GroupMembersFactory(user=user, group=group)
+
             for proposal in proposals:
                 PollProposalIndexFactory(user=user, proposal=proposal, priority=random.randint(0, 2000))
+
+        check_poll(poll)
         print(json.dumps(create_poll_receipt(poll=poll.id)))

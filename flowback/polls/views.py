@@ -43,7 +43,7 @@ from flowback.polls.serializer import GroupPollCreateSerializer, GetGroupPollsLi
     GetPollCounterProposalDetailsSerializer, CreateCounterProposalCommentSerializer, DelegatorSerializer
 from flowback.polls.helper import PollAdapter
 from flowback.users.services import group_user_permitted
-
+from flowback.polls.services import check_poll
 
 class GroupPollViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -319,7 +319,7 @@ class GroupPollViewSet(viewsets.ViewSet):
                         .order_by('-created_at') if last_poll_created_at else []
 
                 for poll in polls:
-                    self.__poll_votes_check(poll)
+                    check_poll(poll)
 
                 page_number = data.get('page', 1)  # page number
                 page_size = data.get('page_size', 10)  # size per page
@@ -388,7 +388,7 @@ class GroupPollViewSet(viewsets.ViewSet):
             ).order_by('-created_at').distinct()
 
         for poll in polls:
-            self.__poll_votes_check(poll)
+            check_poll(poll)
 
         # Paginate
         page_number = data.get('page', 1)  # page number
@@ -445,7 +445,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         data = request.data
         # get poll by id or return error response if poll does not exist
         poll = Poll.objects.filter(id=data.get('poll')).first()
-        self.__poll_votes_check(poll)
+        check_poll(poll)
         if poll:
             # get all public group or user participate on that group
             participant = group_user_permitted(
@@ -693,97 +693,6 @@ class GroupPollViewSet(viewsets.ViewSet):
         result = failed_response(data=None, message="Poll does not exist.")
         return BadRequest(result)
 
-    def __poll_votes_check(self, poll: Poll):
-        # Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now())
-        # Poll.objects.filter(id=poll.id).update(start_time=datetime.datetime.now(), end_time=datetime.datetime.now() + datetime.timedelta(hours=1))
-        adapter = PollAdapter(poll)
-
-        # Counting Proposal Votes
-        if poll.end_time <= datetime.datetime.now() and not poll.votes_counted:
-            counter_proposals = adapter.proposal.objects.filter(poll=poll).all()
-            total_participants = len(GroupMembers.objects.filter(group=poll.group, allow_vote=True))
-            indexes = adapter.index.objects.filter(proposal__poll=poll)
-            counter = {key.id: [0, 0] for key in counter_proposals}
-
-            user_indexes = [list(g) for k, g in groupby(indexes, lambda x: x.user.id)]
-            for user_index in user_indexes:
-                group = poll.group
-                user = user_index[0].user
-                multiplier = 1
-
-                # Check if user is delegate
-                if group.delegators.filter(pk=user.pk).exists():
-                    multiplier = 0 if get_group_member(user=user.pk, group=group.pk).allow_vote else 1
-                    for user_delegate in PollUserDelegate.objects.filter(delegator=user, group=group).all():
-                        if get_group_member(user=user_delegate.user.pk, group=group.pk).allow_vote:
-                            multiplier += 1
-
-                # Count votes
-                if poll.voting_type == poll.VotingType.CONDORCET:
-                    positive = sorted([x for x in user_index if x.is_positive], key=lambda x: x.priority)
-                    # negative = sorted([x for x in user_index if not x.is_positive], key=lambda x: x.priority)
-
-                    for sub, index in enumerate(positive):
-                        counter[index.proposal_id][0] += (len(counter_proposals) - sub) * multiplier
-
-                    # for sub, index in enumerate(negative):
-                    #    counter[index.proposal_id] += (sub - len(counter_proposals)) * multiplier
-
-                elif poll.voting_type == poll.VotingType.TRAFFIC:
-                    positive = [x for x in user_index if x.is_positive]
-                    negative = [x for x in user_index if not x.is_positive]
-
-                    for index in positive:
-                        counter[index.proposal_id][0] += multiplier
-
-                    for index in negative:
-                        counter[index.proposal_id][1] += multiplier
-
-                elif poll.voting_type == poll.VotingType.CARDINAL:
-                    total_score = sum([x.priority for x in user_index])
-
-                    if total_score > 0:
-                        for vote in user_index:
-                            counter[vote.proposal_id][0] += multiplier * (vote.priority / total_score)
-
-            # Post calculation for cardinal voting
-            if poll.voting_type == poll.VotingType.CARDINAL:
-                finalized_score = {}
-
-                for key in counter.keys():
-                    total_score = sum(x[0] for x in counter.values())
-                    if total_score > 0:
-                        finalized_score[key] = counter[key][0] / sum(x[0] for x in counter.values())
-
-                    else:
-                        finalized_score[key] = 0
-
-                for key in counter.keys():
-                    counter[key][0] = math.floor(finalized_score[key] * 1000000)
-
-            # Insert counter to proposals
-            for key, counter_proposal in enumerate(counter_proposals):
-                counter_proposals[key].final_score_positive = counter[counter_proposal.id][0]
-                counter_proposals[key].final_score_negative = counter[counter_proposal.id][1]
-
-            # Apply
-            adapter.proposal.objects.bulk_update(
-                counter_proposals,
-                ['final_score_positive', 'final_score_negative']
-            )
-
-            top = counter_proposals.annotate(
-                final_score=Sum(F('final_score_positive') - F('final_score_negative'))
-            ).order_by('-final_score').first()
-            success = bool(top and top.type != adapter.proposal.Type.DROP)
-
-            Poll.objects.filter(id=poll.id).update(
-                votes_counted=True,
-                success=success,
-                top_proposal=top.id if top else None,
-                total_participants=total_participants
-            )
-
     # TODO improve safety
     @decorators.action(detail=False, methods=['post'], url_path="add_proposal")
     def add_proposal(self, request, *args, **kwargs):
@@ -824,7 +733,7 @@ class GroupPollViewSet(viewsets.ViewSet):
     def all_proposals(self, request, pk):
         poll = get_object_or_404(Poll, pk=pk)
         adapter = PollAdapter(poll)
-        self.__poll_votes_check(poll)
+        check_poll(poll)
 
         proposal = get_list_or_404(adapter.proposal.objects.order_by('-created_at'), poll=poll)
         proposal = adapter.proposal_get_serializer(proposal, many=True)
@@ -835,7 +744,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         user = request.user
         poll = get_object_or_404(Poll, pk=pk)
         adapter = PollAdapter(poll)
-        self.__poll_votes_check(poll)
+        check_poll(poll)
 
         proposal = get_list_or_404(adapter.proposal, poll=poll, user=user)
         proposal = adapter.proposal_get_serializer(proposal, many=True)
@@ -846,7 +755,7 @@ class GroupPollViewSet(viewsets.ViewSet):
         user = request.user
         poll = get_object_or_404(Poll, pk=pk)
         adapter = PollAdapter(poll)
-        self.__poll_votes_check(poll)
+        check_poll(poll)
 
         data = {}
         delegate = PollUserDelegate.objects.filter(user=user, group=poll.group).first()

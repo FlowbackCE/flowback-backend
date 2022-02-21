@@ -152,8 +152,8 @@ class PollProposal(TimeStampedModel):
     )
 
     proposal = models.TextField()
-    final_score_positive = models.IntegerField(null=True, blank=True)
-    final_score_negative = models.IntegerField(null=True, blank=True)
+    final_score_positive = models.DecimalField(max_digits=19, decimal_places=10)
+    final_score_negative = models.DecimalField(max_digits=19, decimal_places=10)
     file = models.FileField(upload_to='groups/polls/proposal/', blank=True, null=True)
 
 
@@ -173,8 +173,8 @@ class PollProposalEvent(TimeStampedModel):
 
     proposal = models.TextField(null=True, blank=True)
     date = models.DateTimeField()
-    final_score_positive = models.IntegerField(null=True, blank=True)
-    final_score_negative = models.IntegerField(null=True, blank=True)
+    final_score_positive = models.DecimalField(max_digits=19, decimal_places=10)
+    final_score_negative = models.DecimalField(max_digits=19, decimal_places=10)
 
     class Meta:
         unique_together = ('poll', 'date')
@@ -183,7 +183,7 @@ class PollProposalEvent(TimeStampedModel):
 class PollProposalIndex(TimeStampedModel):
     proposal = models.ForeignKey(PollProposal, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    priority = models.IntegerField()
+    priority = models.DecimalField(max_digits=19, decimal_places=10)
     is_positive = models.BooleanField()  # Whether the user votes for or against the proposal
     hash = models.TextField(null=True, blank=True)
 
@@ -194,7 +194,7 @@ class PollProposalIndex(TimeStampedModel):
 class PollProposalEventIndex(TimeStampedModel):
     proposal = models.ForeignKey(PollProposalEvent, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    priority = models.IntegerField()
+    priority = models.DecimalField(max_digits=19, decimal_places=10)
     is_positive = models.BooleanField()  # Whether the user votes for or against the counter-proposal
     hash = models.TextField(null=True, blank=True)
 
