@@ -87,7 +87,7 @@ def mail_all_group_members(
         from_email=EMAIL_HOST_USER,
         bcc=mailing_list
     )
-    msg.content_subtype = 'text/html'
+    msg.content_subtype = 'html'
     msg.send(fail_silently=True)
 
     return True
