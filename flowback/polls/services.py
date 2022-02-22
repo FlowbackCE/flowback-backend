@@ -97,9 +97,14 @@ def check_poll(poll: Poll):
 
             # Check if user is delegate
             if group.delegators.filter(pk=user.pk).exists():
+                votes = adapter.index.objects.filter(user=user).all()
+
                 for user_delegate in PollUserDelegate.objects.filter(delegator=user, group=group).all():
                     if get_group_member(user=user_delegate.user.pk, group=group.pk).allow_vote:
-                        multiplier += 1
+                        for vote in votes:
+                            vote.hash = None
+                            vote.user = user_delegate.user
+                            vote.save()
 
             # Count votes
             if poll.voting_type == poll.VotingType.CONDORCET:

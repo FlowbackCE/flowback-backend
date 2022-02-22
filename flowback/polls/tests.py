@@ -12,7 +12,8 @@ from flowback.users.tests import UserFactory, GroupFactory, GroupMembersFactory
 
 from flowback.polls.services import create_poll_receipt, check_poll
 from flowback.polls.helper import PollAdapter
-from flowback.polls.models import Poll, PollProposal, PollProposalEvent, PollProposalIndex, PollProposalEventIndex
+from flowback.polls.models import Poll, PollProposal, PollProposalEvent, PollProposalIndex, PollProposalEventIndex, \
+    PollUserDelegate
 
 
 class PollFactory(DjangoModelFactory):
@@ -77,14 +78,17 @@ class PollProposalEventIndexFactory(DjangoModelFactory):
 
 class PollTestCase(TestCase):
     def test_create_poll_receipt(self):
-        owner, member1, member2, member3, delegator1, delegator2 = UserFactory.create_batch(6)
-        users = [owner, member1, member2, member3, delegator1, delegator2]
+        owner, member1, member2, member3, delegator, \
+        delegate1, delegate2, delegate3 = UserFactory.create_batch(8)
+
+        users = [owner, member1, member2, member3, delegator]
+        delegates = [delegate1, delegate2, delegate3]
 
         group = GroupFactory(
             created_by=owner,
             owners=[owner],
-            delegators=[delegator1, delegator2],
-            members=[member1, member2, member3]
+            delegators=[delegator],
+            members=[member1, member2, member3, delegate1, delegate2, delegate3]
         )
 
         poll = PollFactory(created_by=owner, voting_type=Poll.VotingType.CARDINAL, group=group)
@@ -100,6 +104,14 @@ class PollTestCase(TestCase):
 
             for proposal in proposals:
                 PollProposalIndexFactory(user=user, proposal=proposal, priority=random.randint(0, 2000))
+
+        for delegate in delegates:
+            GroupMembersFactory(user=delegate, group=group)
+            PollUserDelegate.objects.create(
+                user=delegate,
+                group=group,
+                delegator=delegator
+            ).save()
 
         check_poll(poll)
         print(json.dumps(create_poll_receipt(poll=poll.id)))

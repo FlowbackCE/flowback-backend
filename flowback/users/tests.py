@@ -4,6 +4,7 @@ from faker import Faker
 from django.test import TestCase
 
 from flowback.exceptions import PermissionDenied
+from flowback.polls.models import PollUserDelegate
 from flowback.users.models import User, Group, GroupMembers
 from flowback.users.services import group_user_permitted, group_member_update
 
