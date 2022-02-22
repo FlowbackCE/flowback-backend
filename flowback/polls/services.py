@@ -1,6 +1,9 @@
+import json
 import math
+import hashlib
 from itertools import groupby
 
+from django.core.files.base import ContentFile
 from django.db.models import Sum, F
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
@@ -134,22 +137,7 @@ def check_poll(poll: Poll):
                     for vote in user_index:
                         vote.priority = multiplier * (vote.priority / total_score)
                         vote.save()
-                        counter[vote.proposal_id][0] += multiplier * (vote.priority / total_score)
-
-        # Post calculation for cardinal voting
-        if poll.voting_type == poll.VotingType.CARDINAL:
-            finalized_score = {}
-
-            for key in counter.keys():
-                total_score = sum(x[0] for x in counter.values())
-                if total_score > 0:
-                    finalized_score[key] = counter[key][0] / total_score
-
-                else:
-                    finalized_score[key] = 0
-
-            for key in counter.keys():
-                counter[key][0] = finalized_score[key]
+                        counter[vote.proposal_id][0] += vote.priority
 
         # Insert counter to proposals
         for key, counter_proposal in enumerate(counter_proposals):
@@ -167,9 +155,14 @@ def check_poll(poll: Poll):
         ).order_by('-final_score').first()
         success = bool(top and top.type != adapter.proposal.Type.DROP)
 
+        result_file = json.dumps(create_poll_receipt(poll=poll.id))
+        result_hash = hashlib.sha512(result_file.encode('utf-8')).hexdigest()
+
         Poll.objects.filter(id=poll.id).update(
             votes_counted=True,
             success=success,
             top_proposal=top.id if top else None,
-            total_participants=total_participants
+            total_participants=total_participants,
+            result_file=ContentFile(result_file),
+            result_hash=result_hash
         )

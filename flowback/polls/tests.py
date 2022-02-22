@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import json
 import random
 
@@ -114,4 +115,7 @@ class PollTestCase(TestCase):
             ).save()
 
         check_poll(poll)
-        print(json.dumps(create_poll_receipt(poll=poll.id)))
+        receipt = json.dumps(create_poll_receipt(poll=poll.id))
+        final_hash = hashlib.sha512(receipt.encode('utf-8')).hexdigest()
+        print(receipt)
+        print(final_hash)
