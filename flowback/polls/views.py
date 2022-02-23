@@ -103,24 +103,24 @@ class GroupPollViewSet(viewsets.ViewSet):
                        date=datetime.datetime.now()
                    )
 
-                if poll.accepted:
-                    notification_create(
-                        notification_type='group',
-                        notification_target=group.id,
-                        link_type='poll',
-                        link_target=poll.id,
-                        message=f'Group "{group.group_name}" created a new poll: "{poll.title}".',
-                        date=poll.accepted_at
-                    )
-
-                    notification_create(
-                        notification_type='poll',
-                        notification_target=poll.id,
-                        link_type='poll',
-                        link_target=poll.id,
-                        message=f'Poll "{poll.title}" is now finished.',
-                        date=poll.end_time
-                    )
+                # if poll.accepted:
+                #     notification_create(
+                #         notification_type='group',
+                #         notification_target=group.id,
+                #         link_type='poll',
+                #         link_target=poll.id,
+                #         message=f'Group "{group.group_name}" created a new poll: "{poll.title}".',
+                #         date=poll.accepted_at
+                #     )
+                #
+                #     notification_create(
+                #         notification_type='poll',
+                #         notification_target=poll.id,
+                #         link_type='poll',
+                #         link_target=poll.id,
+                #         message=f'Poll "{poll.title}" is now finished.',
+                #         date=poll.end_time
+                #     )
 
                 # return success response with poll id
                 result = success_response(data={"poll": poll.id}, message="")
@@ -158,23 +158,23 @@ class GroupPollViewSet(viewsets.ViewSet):
                 poll.modified_by = request.user
                 poll.save()
 
-                if poll.accepted:
-                    notification_update(
-                        notification_type='group',
-                        notification_target=group.id,
-                        link_type='poll',
-                        link_target=poll.id,
-                        message=f'Group "{group.group_name}" created a new poll: "{data.get("title", poll.title)}".'
-                    )
-
-                    notification_update(
-                        notification_type='poll',
-                        notification_target=poll.id,
-                        link_type='poll',
-                        link_target=poll.id,
-                        message=f'Poll "{poll.title}" is now finished.',
-                        date=data.get('end_time', poll.end_time)
-                    )
+                # if poll.accepted:
+                #     notification_update(
+                #         notification_type='group',
+                #         notification_target=group.id,
+                #         link_type='poll',
+                #         link_target=poll.id,
+                #         message=f'Group "{group.group_name}" created a new poll: "{data.get("title", poll.title)}".'
+                #     )
+                #
+                #     notification_update(
+                #         notification_type='poll',
+                #         notification_target=poll.id,
+                #         link_type='poll',
+                #         link_target=poll.id,
+                #         message=f'Poll "{poll.title}" is now finished.',
+                #         date=data.get('end_time', poll.end_time)
+                #     )
 
                 # return success response
                 result = success_response(data=None, message="")
@@ -267,23 +267,23 @@ class GroupPollViewSet(viewsets.ViewSet):
                 poll.save()
                 serializer = GroupPollDetailsSerializer(poll, context={'request': self.request})
 
-                notification_create(
-                    notification_type='group',
-                    notification_target=group.id,
-                    link_type='poll',
-                    link_target=poll.id,
-                    message=f'Group "{group.group_name}" created a new poll: "{poll.title}".',
-                    date=poll.accepted_at
-                )
-
-                notification_create(
-                    notification_type='poll',
-                    notification_target=poll.id,
-                    link_type='poll',
-                    link_target=poll.id,
-                    message=f'Poll "{poll.title}" is now finished.',
-                    date=poll.end_time
-                )
+                # notification_create(
+                #     notification_type='group',
+                #     notification_target=group.id,
+                #     link_type='poll',
+                #     link_target=poll.id,
+                #     message=f'Group "{group.group_name}" created a new poll: "{poll.title}".',
+                #     date=poll.accepted_at
+                # )
+                #
+                # notification_create(
+                #     notification_type='poll',
+                #     notification_target=poll.id,
+                #     link_type='poll',
+                #     link_target=poll.id,
+                #     message=f'Poll "{poll.title}" is now finished.',
+                #     date=poll.end_time
+                # )
 
                 result = success_response(data=serializer.data, message="")
                 return Created(result)
@@ -805,14 +805,14 @@ class GroupPollViewSet(viewsets.ViewSet):
             print(serializer.validated_data)
             proposal = serializer.save(user=user)
 
-            notification_create(
-                notification_type='poll',
-                notification_target=poll.id,
-                link_type='poll_proposal',
-                link_target=proposal.id,
-                message=f'New proposal added to "{poll.title}".',
-                date=datetime.datetime.now()
-            )
+            # notification_create(
+            #     notification_type='poll',
+            #     notification_target=poll.id,
+            #     link_type='poll_proposal',
+            #     link_target=proposal.id,
+            #     message=f'New proposal added to "{poll.title}".',
+            #     date=datetime.datetime.now()
+            # )
 
             return Response(status=status.HTTP_201_CREATED)
 
