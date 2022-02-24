@@ -452,7 +452,6 @@ class UserGroupViewSet(viewsets.ViewSet):
 
         return Response(status=status.HTTP_201_CREATED)
 
-
     @decorators.action(detail=True, methods=['post', 'update'], url_path="group_member_update")
     def group_member_update_api(self, request, pk):
         class InputSerializer(serializers.Serializer):
@@ -718,7 +717,7 @@ class UserGroupViewSet(viewsets.ViewSet):
         user = request.user
         serializer = InputSerializer(data=request.data)
 
-        serializer.is_valid()
+        serializer.is_valid(raise_exception=True)
         leave_group(user=user.id, group=pk, **serializer.validated_data)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
