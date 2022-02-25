@@ -155,14 +155,18 @@ def check_poll(poll: Poll):
         ).order_by('-final_score').first()
         success = bool(top and top.type != adapter.proposal.Type.DROP)
 
-        result_file = json.dumps(create_poll_receipt(poll=poll.id))
+        result_file = json.dumps(create_poll_receipt(poll=poll.id), indent=4)
         result_hash = hashlib.sha512(result_file.encode('utf-8')).hexdigest()
+
+        poll.result_file.save('result.json', ContentFile(result_file))
 
         Poll.objects.filter(id=poll.id).update(
             votes_counted=True,
             success=success,
             top_proposal=top.id if top else None,
             total_participants=total_participants,
-            result_file=ContentFile(result_file),
             result_hash=result_hash
         )
+        return True
+
+    return False
