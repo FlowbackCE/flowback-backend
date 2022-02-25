@@ -205,7 +205,7 @@ class GroupPollDetailsSerializer(serializers.ModelSerializer):
         model = Poll
         fields = ('id', 'group', 'user_type', 'title', 'description',
                   'tags', 'files', 'accepted', 'accepted_at', 'success',
-                  'result_hash', 'result_file', 'result_token'
+                  'result_hash', 'result_file', 'result_token',
                   'end_time', 'created_at', 'modified_at', 'created_by',
                   'modified_by', 'vote_details', "voting_status",
                   "discussion", 'comments_details', 'type', 'voting_type',
